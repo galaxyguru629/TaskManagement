@@ -1,6 +1,6 @@
 # CI / CD
 
-This repo separates **continuous integration** (GitHub Actions) from **continuous deployment** (Vercel + Render).
+This repo separates **continuous integration** (GitHub Actions) from **continuous deployment** (Vercel + Render). Deploy settings: [deployment.md](deployment.md).
 
 ## What runs where
 
@@ -15,19 +15,14 @@ This repo separates **continuous integration** (GitHub Actions) from **continuou
 2. **Client** — `npm ci`, production Angular build (`prebuild` generates `environment.config.ts` from defaults; no `client/.env` required).
 3. **GraphQL codegen** — regenerates types and fails if `graphql.ts` would change (run `npm run codegen --prefix client` locally before pushing).
 
-### CD (your current setup)
-
-- **Vercel** — builds `client/` per `vercel.json` when `main` updates.
-- **Render** — Web Service on `server/` (`npm ci --include=dev && npm run build`, then `npm start`). See `render.yaml`. Production `NODE_ENV` omits devDependencies unless install uses `--include=dev`.
-
-CI does not replace those deploys; it catches broken builds and tests **before** or **alongside** deploy.
+CI does not replace deploys; it catches broken builds and tests before or alongside production deploy.
 
 ## Recommended GitHub settings
 
 1. **Branch protection** on `main`:
    - Require status checks: **Server — build & test**, **Client — production build**, **GraphQL — codegen in sync**.
-   - Require pull request reviews (optional but typical).
-2. **Do not commit** `server/.env`, `client/.env`, or tokens. CI never needs them for the current jobs.
+   - Require pull request reviews (optional).
+2. **Do not commit** `server/.env`, `client/.env`, or tokens.
 
 ## Run CI locally
 
@@ -46,6 +41,6 @@ git diff --exit-code client/src/app/graphql/generated/graphql.ts
 
 ## Optional next steps
 
-- **Deploy gates**: In Vercel/Render, enable “wait for GitHub checks” so production deploy only runs after CI passes on `main`.
-- **Client unit tests**: Add a Karma headless job when `ng test` is configured for CI (`ChromeHeadless`).
-- **Preview deploys**: Vercel preview URLs per PR (CD for previews; CI still runs on the PR).
+- **Deploy gates**: In Vercel/Render, wait for GitHub checks before deploying `main`.
+- **Client unit tests**: Add a Karma headless CI job when `ng test` is configured for CI.
+- **Preview deploys**: Vercel preview URLs per PR.
