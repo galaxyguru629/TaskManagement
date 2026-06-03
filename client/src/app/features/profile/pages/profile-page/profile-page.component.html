@@ -3,8 +3,8 @@
     <div>
       <p class="eyebrow">Profile</p>
       @if (showSkeleton() && loading()) {
-        <div class="ui-skeleton skeleton-title"></div>
-        <div class="ui-skeleton skeleton-subtitle"></div>
+        <div class="ui-skeleton skeleton-title" aria-hidden="true"></div>
+        <div class="ui-skeleton skeleton-subtitle" aria-hidden="true"></div>
       } @else {
         <h1>{{ profile()?.displayName || 'Your profile' }}</h1>
         <p class="subtitle">{{ profile()?.email || 'Signed in with Auth0' }}</p>
@@ -18,13 +18,13 @@
   </section>
 
   <section class="profile-content">
-    @if (showSkeleton() && loading()) {
-      <article class="profile-card">
+      @if (showSkeleton() && loading()) {
+      <article class="profile-card" aria-hidden="true">
         <div class="ui-skeleton skeleton-block"></div>
         <div class="ui-skeleton skeleton-block short"></div>
         <div class="ui-skeleton skeleton-block"></div>
       </article>
-      <article class="profile-card details">
+      <article class="profile-card details" aria-hidden="true">
         <div class="ui-skeleton skeleton-block"></div>
         <div class="ui-skeleton skeleton-line"></div>
         <div class="ui-skeleton skeleton-line"></div>
@@ -54,15 +54,15 @@
           <input id="displayName" type="text" autocomplete="name" [formControl]="displayName" maxlength="80" name="displayName" />
 
           @if (displayName.touched && displayName.hasError('required')) {
-            <p class="field-error">Name is required.</p>
+            <p class="field-error" role="alert">Name is required.</p>
           } @else if (displayName.touched && displayName.hasError('maxlength')) {
-            <p class="field-error">Name must be 80 characters or fewer.</p>
+            <p class="field-error" role="alert">Name must be 80 characters or fewer.</p>
           }
 
           @if (error()) {
-            <p class="form-error">{{ error() }}</p>
+            <p class="form-error" role="alert">{{ error() }}</p>
           } @else if (saved()) {
-            <p class="saved">Profile saved.</p>
+            <p class="saved" role="status">Profile saved.</p>
           }
 
           <button type="submit" [disabled]="displayName.invalid || saving() || loading()">

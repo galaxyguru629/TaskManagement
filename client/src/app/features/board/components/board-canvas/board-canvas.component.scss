@@ -50,19 +50,54 @@
 
 .open-add-list {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: var(--radius-3);
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
-  padding: 12px;
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.16) 92%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.88);
+  padding: 11px 14px;
   text-align: left;
   cursor: pointer;
   font-weight: 600;
+  font-size: 14px;
+  transition: background var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast), border-color var(--motion-fast);
+}
+
+.open-add-list::before {
+  content: '+';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-1);
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  flex: 0 0 auto;
   transition: background var(--motion-fast);
 }
 
 .open-add-list:hover {
-  background: rgba(255, 255, 255, 0.32);
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.22) 92%, transparent);
+  border-color: rgba(255, 255, 255, 0.44);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  color: #fff;
+}
+
+.open-add-list:hover::before {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.open-add-list:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 form {
@@ -96,21 +131,56 @@ form div {
 }
 
 form button {
-  border: 1px solid transparent;
-  border-radius: var(--radius-1);
+  border: 0;
+  border-radius: var(--radius-2);
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--motion-fast), transform var(--motion-fast);
+}
+
+form button[type="submit"] {
   background: var(--accent);
   color: var(--text-on-accent);
-  padding: 6px 12px;
-  font-weight: 600;
-  cursor: pointer;
+}
+
+form button[type="submit"]:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+form button[type="submit"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+form button[type="submit"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
 }
 
 .cancel {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   background: var(--surface-interactive);
-  border-color: var(--border);
   color: var(--text-subtle);
-  font-size: 24px;
-  padding: 0 8px;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: var(--radius-2);
+  border: 1px solid var(--border);
+}
+
+.cancel:hover {
+  background: color-mix(in srgb, var(--surface-interactive) 72%, var(--accent-soft));
+  color: var(--text);
+}
+
+.cancel:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .list-skeleton {

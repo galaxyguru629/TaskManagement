@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   background: var(--surface-panel);
-  color: var(--text-primary);
+  color: var(--text);
   box-shadow: var(--shadow-popover);
 }
 
@@ -23,19 +23,26 @@ h2 {
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 22px;
-  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--text-subtle);
   cursor: pointer;
-  padding: 2px 6px;
-  color: var(--text-secondary);
-  opacity: 0.7;
+  transition: background var(--motion-fast), color var(--motion-fast);
 }
 
 .close-btn:hover {
-  opacity: 1;
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-interactive) 76%, var(--accent-soft));
+  color: var(--text);
+}
+
+.close-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .filter-body {
@@ -75,6 +82,16 @@ h2 {
 
 .filter-checkbox:hover {
   background: var(--surface-interactive);
+}
+
+.filter-checkbox:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-radius: var(--radius-1);
+}
+
+.filter-checkbox input[type="checkbox"]:focus-visible {
+  outline: none;
 }
 
 .filter-checkbox input[type="checkbox"] {
@@ -156,16 +173,27 @@ footer {
 }
 
 .clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   background: none;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
   padding: 6px 12px;
   cursor: pointer;
   font-size: 12px;
-  color: var(--text-primary);
+  font-weight: 700;
+  color: var(--text);
   white-space: nowrap;
+  transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
 }
 
 .clear-btn:hover {
   background: var(--surface-interactive);
+  transform: translateY(-1px);
+}
+
+.clear-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }

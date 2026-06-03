@@ -56,6 +56,8 @@
 }
 
 .close {
+  display: inline-grid;
+  place-items: center;
   width: 36px;
   height: 36px;
   border: 0;
@@ -66,6 +68,16 @@
   line-height: 1;
   cursor: pointer;
   transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.close:hover {
+  background: color-mix(in srgb, var(--surface-interactive) 76%, var(--accent-soft));
+  color: var(--text);
+}
+
+.close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .close:hover {
@@ -341,17 +353,31 @@ textarea {
 
 button[type='submit']:not(.priority-chip) {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   border: 0;
   border-radius: var(--radius-2);
   background: var(--accent);
   color: var(--text-on-accent);
   padding: 8px 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: background var(--motion-fast), transform var(--motion-fast);
+}
+
+button[type='submit']:not(.priority-chip):hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+button[type='submit']:not(.priority-chip):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 button[type='submit']:not(.priority-chip):disabled {
-  opacity: 0.6;
+  opacity: 0.56;
   cursor: not-allowed;
 }
 
@@ -359,19 +385,28 @@ button[type='submit']:not(.priority-chip):disabled {
   width: 100%;
   margin-top: auto;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
   border-radius: var(--radius-2);
   background: transparent;
   color: var(--danger);
   padding: 10px 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  transition: background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast);
 }
 
 .danger:hover {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   border-color: color-mix(in srgb, var(--danger) 65%, var(--border));
+}
+
+.danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .checklist-block {
@@ -490,6 +525,8 @@ button[type='submit']:not(.priority-chip):disabled {
 }
 
 .checklist-delete {
+  display: inline-grid;
+  place-items: center;
   width: 28px;
   height: 28px;
   border: 0;
@@ -520,18 +557,32 @@ button[type='submit']:not(.priority-chip):disabled {
 
 .checklist-add-btn {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   border: 0;
   border-radius: var(--radius-2);
   background: var(--accent);
   color: var(--text-on-accent);
   padding: 8px 14px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
+  transition: background var(--motion-fast), transform var(--motion-fast);
+}
+
+.checklist-add-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.checklist-add-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .checklist-add-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.56;
   cursor: not-allowed;
 }
 
@@ -620,7 +671,7 @@ button[type='submit']:not(.priority-chip):disabled {
 
 .modal-labels span {
   border-radius: var(--radius-1);
-  color: #172b4d;
+  color: var(--label-text);
   padding: 6px 8px;
   font-size: 12px;
   font-weight: 700;

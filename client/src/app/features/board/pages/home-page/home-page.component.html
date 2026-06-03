@@ -13,12 +13,12 @@
   </section>
 
   @if (error()) {
-    <p class="error">{{ error() }}</p>
+    <p class="error" role="alert">{{ error() }}</p>
   }
 
   @if (showSkeleton()) {
     @if (loading()) {
-      <section class="board-section">
+      <section class="board-section" aria-hidden="true">
         <header class="section-heading">
           <div class="ui-skeleton skeleton-heading"></div>
         </header>
@@ -29,7 +29,7 @@
         </div>
       </section>
 
-      <section class="board-section">
+      <section class="board-section" aria-hidden="true">
         <header class="section-heading">
           <div class="ui-skeleton skeleton-heading"></div>
         </header>
@@ -46,7 +46,7 @@
         </header>
         <div class="board-grid">
           @for (board of ownedBoards(); track board.id) {
-            <button type="button" class="board-card" [style.background]="board.background" (click)="openBoard(board.id)">
+            <button type="button" class="board-card" [style.background]="board.background" [attr.aria-label]="'Open board ' + board.title" (click)="openBoard(board.id)">
               @if (board.logoUrl) {
                 <img class="board-logo" [src]="board.logoUrl" [alt]="board.title + ' logo'" />
               }
@@ -65,7 +65,7 @@
         </header>
         <div class="board-grid">
           @for (board of invitedBoards(); track board.id) {
-            <button type="button" class="board-card" [style.background]="board.background" (click)="openBoard(board.id)">
+            <button type="button" class="board-card" [style.background]="board.background" [attr.aria-label]="'Open board ' + board.title" (click)="openBoard(board.id)">
               @if (board.logoUrl) {
                 <img class="board-logo" [src]="board.logoUrl" [alt]="board.title + ' logo'" />
               }
@@ -91,8 +91,8 @@
                   <p>{{ invitation.email }} as {{ invitation.role }}</p>
                 </div>
                 <div class="actions">
-                  <button type="button" (click)="acceptInvitation(invitation.id)">Accept</button>
-                  <button type="button" class="secondary" (click)="declineInvitation(invitation.id)">Decline</button>
+                  <button type="button" [attr.aria-label]="'Accept invitation to ' + invitation.boardTitle" (click)="acceptInvitation(invitation.id)">Accept</button>
+                  <button type="button" class="secondary" [attr.aria-label]="'Decline invitation to ' + invitation.boardTitle" (click)="declineInvitation(invitation.id)">Decline</button>
                 </div>
               </article>
             }

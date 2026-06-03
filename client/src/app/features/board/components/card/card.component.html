@@ -1,6 +1,7 @@
 <article
   class="card"
   [class.card--conflict]="conflicted()"
+  [class.card--done]="checklistDone()"
   tabindex="0"
   (click)="open.emit(card())"
   (keydown.enter)="open.emit(card())"
@@ -39,7 +40,13 @@
   @if (checklistProgress() || card().dueDate) {
     <footer>
       @if (checklistProgress(); as progress) {
-        <span>{{ progress }}</span>
+        <span class="checklist-badge" [class.checklist-badge--done]="progress === 'done'">
+          @if (progress === 'done') {
+            ✓ Done
+          } @else {
+            {{ progress }}
+          }
+        </span>
       }
       @if (card().dueDate) {
         <time>{{ card().dueDate }}</time>

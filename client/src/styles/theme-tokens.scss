@@ -58,9 +58,11 @@
   --label-red: #f87168;
   --label-purple: #9f8fef;
   --label-blue: #579dff;
+  --label-text: #172b4d;
 }
 
 :root[data-theme="dark"] {
+  --label-text: #c6cfdd;
   --board-bg: linear-gradient(140deg, #0d2b59 0%, #2d1f55 52%, #173d73 100%);
 
   --surface-canvas: #0b1220;
@@ -90,7 +92,7 @@
   /* Backward-compatible aliases for existing component styles */
   --surface-app: var(--surface-canvas);
   --surface-board: rgba(255, 255, 255, 0.16);
-  --surface-list: color-mix(in srgb, var(--surface-panel) 78%, var(--surface-interactive));
+  --surface-list: color-mix(in srgb, var(--surface-panel) 74%, transparent);
   --surface-card: var(--surface-panel);
   --surface-card-hover: color-mix(in srgb, var(--surface-panel) 84%, var(--surface-interactive));
   --surface-raised: var(--surface-elevated);

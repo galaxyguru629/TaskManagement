@@ -10,7 +10,7 @@
 }
 
 .open-composer:hover {
-  background: rgba(9, 30, 66, 0.08);
+  background: color-mix(in srgb, var(--surface-interactive) 28%, transparent);
   color: var(--text);
 }
 
@@ -43,23 +43,45 @@ textarea {
   border-radius: var(--radius-2);
   background: var(--accent);
   color: var(--text-on-accent);
-  padding: 6px 12px;
-  font-weight: 600;
+  padding: 8px 14px;
+  font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: background var(--motion-fast), transform var(--motion-fast);
 }
 
-.primary:hover {
+.primary:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.primary:hover:not(:disabled) {
   background: var(--accent-hover);
+  transform: translateY(-1px);
 }
 
 .close {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--border);
   border-radius: var(--radius-2);
   background: var(--surface-interactive);
   color: var(--text-subtle);
-  width: 34px;
-  height: 34px;
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.close:hover {
+  background: color-mix(in srgb, var(--surface-interactive) 72%, var(--accent-soft));
+  color: var(--text);
+}
+
+.close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }

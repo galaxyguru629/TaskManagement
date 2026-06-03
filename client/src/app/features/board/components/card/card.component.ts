@@ -19,8 +19,12 @@ export class CardComponent {
   readonly checklistProgress = computed(() => {
     const items = this.card().checklist;
     if (!items.length) return null;
+    const done = items.every((item) => item.checked);
+    if (done) return 'done';
     return `${items.filter((item) => item.checked).length}/${items.length}`;
   });
+
+  readonly checklistDone = computed(() => this.checklistProgress() === 'done');
 
   readonly assignees = computed(() => {
     const ids = this.card().assignees ?? [];

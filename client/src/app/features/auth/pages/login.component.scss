@@ -38,10 +38,20 @@ h1 {
   line-height: 1.5;
 }
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   border-radius: var(--radius-2);
   padding: 10px 14px;
   font-weight: 700;
   cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .actions {
   display: grid;

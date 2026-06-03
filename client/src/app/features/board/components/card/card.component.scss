@@ -22,6 +22,10 @@
   box-shadow: inset 4px 0 0 var(--warning), var(--shadow-card);
 }
 
+.card--done {
+  box-shadow: inset 0 -3px 0 var(--success), var(--shadow-card);
+}
+
 .cover {
   height: 34px;
 }
@@ -131,4 +135,9 @@ footer {
 
 strong {
   color: color-mix(in srgb, var(--warning) 75%, black);
+}
+
+.checklist-badge--done {
+  color: var(--success);
+  font-weight: 600;
 }

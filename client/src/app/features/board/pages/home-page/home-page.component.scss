@@ -76,9 +76,19 @@ h1 {
 .create-board button,
 .actions button {
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   border: 0;
   font-weight: 700;
-  transition: background var(--motion-fast), transform var(--motion-fast);
+  transition: background var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.create-board button:disabled,
+.actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
 }
 
 .create-board button {
@@ -93,6 +103,12 @@ h1 {
 
 .create-board button:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+.create-board button:focus-visible,
+.actions button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .board-section {
@@ -120,7 +136,7 @@ h1 {
 .board-card {
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: var(--radius-3);
-  color: #fff;
+  color: var(--text-inverse);
   min-height: 128px;
   display: grid;
   gap: 8px;
@@ -135,6 +151,11 @@ h1 {
   transform: translateY(-2px);
   box-shadow: var(--shadow-card-hover);
   filter: saturate(1.08);
+}
+
+.board-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring), var(--shadow-card-hover);
 }
 
 .board-card strong,
@@ -171,6 +192,11 @@ h1 {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  transition: box-shadow var(--motion-fast);
+}
+
+.invite-card:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .invite-card p {
@@ -192,6 +218,11 @@ h1 {
   background: var(--surface-interactive);
   color: var(--text);
   border: 1px solid var(--border-strong);
+  transition: background var(--motion-fast), transform var(--motion-fast);
+}
+
+.actions .secondary:hover {
+  background: color-mix(in srgb, var(--surface-interactive) 72%, var(--accent-soft));
 }
 
 .loading,
