@@ -186,15 +186,14 @@ vercel   # from repository root; reads vercel.json
 
 Set production env vars in Vercel (see [Environment variables](#environment-variables)). The build runs `prebuild`, which regenerates `environment.config.ts` from those values.
 
-**Vercel project settings** (must match `vercel.json`):
+**Vercel project settings:**
 
-| Setting | Value |
-|---------|--------|
-| Root Directory | *(empty — repository root)* |
-| Build Command | *(use vercel.json)* |
-| Output Directory | `client/dist/client/browser` |
+| Root Directory | Config file | Install / build | Output Directory |
+|----------------|-------------|-----------------|------------------|
+| *(empty — repo root)* | `/vercel.json` | `cd client && npm ci` | `client/dist/client/browser` |
+| `client` | `client/vercel.json` | `npm ci` | `dist/client/browser` |
 
-Do **not** set Output Directory to `browser` alone — Angular 19 writes the SPA to `dist/client/browser` under `client/`. If Root Directory is set to `client` in the dashboard, use Output Directory `dist/client/browser` instead and align `buildCommand` / `installCommand` with that folder.
+Use **one** of the rows above. Do not use `npm ci --prefix client` when Root Directory is already `client` — npm will look for `client/client/package-lock.json` and fail. Clear any dashboard overrides for Build / Install / Output so `vercel.json` applies.
 
 ## CI / CD
 
