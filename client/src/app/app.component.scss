@@ -30,7 +30,6 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  z-index: 0;
 
   > :not(router-outlet) {
     flex: 1 1 auto;

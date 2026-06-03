@@ -28,6 +28,7 @@ export class DueDatePickerComponent implements AfterViewInit, OnDestroy {
   readonly cleared = output<void>();
 
   @ViewChild('inputEl') private inputEl?: ElementRef<HTMLInputElement>;
+  @ViewChild('triggerBtn') private triggerBtn?: ElementRef<HTMLButtonElement>;
 
   private picker: FlatpickrInstance | null = null;
 
@@ -85,6 +86,18 @@ export class DueDatePickerComponent implements AfterViewInit, OnDestroy {
       defaultDate: this.value() || undefined,
       onChange: (_dates, dateStr) => {
         this.valueChange.emit(dateStr);
+      },
+      onOpen: () => {
+        queueMicrotask(() => {
+          input.blur();
+          const calendar = this.picker?.calendarContainer;
+          if (!calendar) return;
+          calendar.setAttribute('tabindex', '-1');
+          calendar.focus();
+        });
+      },
+      onClose: () => {
+        this.triggerBtn?.nativeElement.focus();
       },
     });
   }

@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BoardActivityModel, BoardCardModel, BoardLabelModel, BoardMemberModel, CardConflict } from '../../models/board.types';
 import { BoardMembersMultiPickerComponent } from '../board-members-multi-picker/board-members-multi-picker.component';
@@ -20,6 +32,13 @@ const PRIORITIES = [1, 2, 3, 4, 5] as const;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CardDetailModalComponent {
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private anchorParent: HTMLElement | null = null;
+  private anchorNext: Node | null = null;
+
   readonly card = input<BoardCardModel | null>(null);
   readonly boardMembers = input<BoardMemberModel[]>([]);
   readonly labels = input<BoardLabelModel[]>([]);
@@ -36,6 +55,8 @@ export class CardDetailModalComponent {
   readonly archiveCard = output<BoardCardModel>();
   readonly addChecklistItem = output<{ card: BoardCardModel; text: string }>();
   readonly toggleChecklistItem = output<{ id: string; checked: boolean }>();
+  readonly renameChecklistItem = output<{ id: string; text: string }>();
+  readonly deleteChecklistItem = output<string>();
   readonly addComment = output<{ card: BoardCardModel; body: string }>();
   readonly dismissConflict = output<string>();
 
@@ -48,6 +69,8 @@ export class CardDetailModalComponent {
   readonly coverColor = signal('');
   readonly priority = signal(2);
   readonly checklistText = signal('');
+  readonly editingChecklistId = signal<string | null>(null);
+  readonly editingChecklistText = signal('');
   readonly commentBody = signal('');
 
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -83,6 +106,15 @@ export class CardDetailModalComponent {
 
   constructor() {
     effect(() => {
+      if (this.card()) {
+        this.attachToBody();
+      } else {
+        this.restoreToAnchor();
+      }
+    });
+
+    this.destroyRef.onDestroy(() => this.restoreToAnchor());
+    effect(() => {
       const card = this.card();
       this.title.set(card?.title ?? '');
       this.description.set(card?.description ?? '');
@@ -91,6 +123,7 @@ export class CardDetailModalComponent {
       this.coverColor.set(card?.coverColor ?? '');
       this.priority.set(card?.priority ?? 2);
       this.checklistText.set('');
+      this.editingChecklistId.set(null);
       this.commentBody.set('');
     });
   }
@@ -171,5 +204,41 @@ export class CardDetailModalComponent {
 
   isTempChecklistItem(id: string): boolean {
     return id.startsWith('temp-checklist-');
+  }
+
+  startEditChecklist(item: { id: string; text: string }): void {
+    if (this.isTempChecklistItem(item.id)) return;
+    this.editingChecklistId.set(item.id);
+    this.editingChecklistText.set(item.text);
+  }
+
+  commitEditChecklist(item: { id: string; text: string }): void {
+    if (this.editingChecklistId() !== item.id) return;
+    const text = this.editingChecklistText().trim();
+    this.editingChecklistId.set(null);
+    if (!text || text === item.text) return;
+    this.renameChecklistItem.emit({ id: item.id, text });
+  }
+
+  cancelEditChecklist(): void {
+    this.editingChecklistId.set(null);
+  }
+
+  private attachToBody(): void {
+    const host = this.host.nativeElement;
+    if (host.parentElement === this.document.body) return;
+    this.anchorParent = host.parentElement;
+    this.anchorNext = host.nextSibling;
+    this.document.body.appendChild(host);
+  }
+
+  private restoreToAnchor(): void {
+    const host = this.host.nativeElement;
+    if (!this.anchorParent || host.parentElement !== this.document.body) return;
+    if (this.anchorNext && this.anchorNext.parentElement === this.anchorParent) {
+      this.anchorParent.insertBefore(host, this.anchorNext);
+    } else {
+      this.anchorParent.appendChild(host);
+    }
   }
 }

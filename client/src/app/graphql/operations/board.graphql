@@ -297,6 +297,15 @@ mutation UpdateChecklistItem($id: ID!, $text: String, $checked: Boolean) {
   }
 }
 
+mutation DeleteChecklistItem($id: ID!) {
+  deleteChecklistItem(id: $id) {
+    success
+    checklistItem {
+      ...ChecklistItemFields
+    }
+  }
+}
+
 mutation AddComment($taskId: ID!, $body: String!) {
   addComment(taskId: $taskId, body: $body) {
     ...CommentFields

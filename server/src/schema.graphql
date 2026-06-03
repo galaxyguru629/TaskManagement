@@ -35,6 +35,7 @@ enum BoardEventType {
   CARD_DELETED
   LABEL_UPDATED
   CHECKLIST_UPDATED
+  CHECKLIST_ITEM_DELETED
   COMMENT_CREATED
 }
 
@@ -330,7 +331,13 @@ type Mutation {
   setTaskLabels(taskId: ID!, labelIds: [ID!]!): Task
   createChecklistItem(taskId: ID!, text: String!, clientMutationId: String): ChecklistItem!
   updateChecklistItem(id: ID!, text: String, checked: Boolean): ChecklistItem
+  deleteChecklistItem(id: ID!): ChecklistItemDeleteResult!
   addComment(taskId: ID!, body: String!): TaskComment!
+}
+
+type ChecklistItemDeleteResult {
+  success: Boolean!
+  checklistItem: ChecklistItem!
 }
 
 type BoardMutationResult {

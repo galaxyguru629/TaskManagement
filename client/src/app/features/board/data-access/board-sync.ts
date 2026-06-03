@@ -73,6 +73,10 @@ export function applyBoardEvent(view: BoardViewModel | null, event: BoardEventMo
       return applyCommentCreated(view, event.task, event.comment, event.activity);
     case BoardEventType.ChecklistUpdated:
       return applyChecklistUpdated(view, event.task, event.checklistItem);
+    case BoardEventType.ChecklistItemDeleted:
+      return event.checklistItem
+        ? removeChecklistItem(view, event.checklistItem.taskId, event.checklistItem.id)
+        : view;
     case BoardEventType.LabelUpdated:
       return applyLabelUpdated(view, event.label, event.task);
     default:

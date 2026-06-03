@@ -35,6 +35,8 @@
     (archiveCard)="facade.archiveCard($event)"
     (addChecklistItem)="facade.addChecklistItem($event.card, $event.text)"
     (toggleChecklistItem)="facade.selectedCard() && facade.updateChecklistItem(facade.selectedCard()!, $event.id, $event.checked)"
+    (renameChecklistItem)="facade.selectedCard() && facade.renameChecklistItem(facade.selectedCard()!, $event.id, $event.text)"
+    (deleteChecklistItem)="facade.selectedCard() && facade.deleteChecklistItem(facade.selectedCard()!, $event)"
     (addComment)="facade.addComment($event.card, $event.body)"
     (dismissConflict)="facade.dismissConflict($event)"
   />

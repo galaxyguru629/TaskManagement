@@ -328,6 +328,23 @@ export async function updateChecklistItem(db: DbClient, id: string, text: string
   return result.rows[0] ? toChecklist(result.rows[0]) : null;
 }
 
+export async function deleteChecklistItem(db: DbClient, id: string, user: AuthUser): Promise<import('../types.js').ChecklistItem | null> {
+  const current = await db.query<{ task_id: string; board_id: string; title: string }>(
+    'SELECT ci.task_id, t.board_id, t.title FROM checklist_items ci JOIN tasks t ON t.id = ci.task_id WHERE ci.id = $1',
+    [id],
+  );
+  if (!current.rows[0]) return null;
+  const result = await db.query<import('./helpers/db-types.js').ChecklistRow>(
+    'DELETE FROM checklist_items WHERE id = $1 RETURNING id, task_id, text, checked, position',
+    [id],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  void recordActivity(db, current.rows[0].board_id, current.rows[0].task_id, 'CHECKLIST_UPDATED', `updated checklist on "${current.rows[0].title}"`, user)
+    .catch((err) => console.error('Activity recording failed:', err));
+  return toChecklist(row);
+}
+
 export async function addComment(db: DbClient, taskId: string, body: string, user: AuthUser): Promise<import('../types.js').TaskComment> {
   const taskMeta = await db.query<{ board_id: string; title: string }>('SELECT board_id, title FROM tasks WHERE id = $1', [taskId]);
   const meta = taskMeta.rows[0];

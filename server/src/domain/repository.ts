@@ -11,7 +11,7 @@ export {
 export {
   getTask, getTaskForUser, createTask, updateTask, moveTask, deleteTask,
   listTasks, listTasksForUser, setTaskLabels,
-  createChecklistItem, updateChecklistItem, addComment,
+  createChecklistItem, updateChecklistItem, deleteChecklistItem, addComment,
 } from './card.repository.js';
 
 export {

@@ -1,7 +1,7 @@
 <div class="due-date-picker">
-  <input #inputEl type="text" class="due-date-hidden" tabindex="-1" aria-hidden="true" />
+  <input #inputEl type="text" class="due-date-hidden" tabindex="-1" aria-label="Due date" readonly />
 
-  <button type="button" class="due-trigger" [class.has-date]="!!value()" (click)="openPicker()">
+  <button #triggerBtn type="button" class="due-trigger" [class.has-date]="!!value()" (click)="openPicker()">
     <span class="due-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
         <path

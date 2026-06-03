@@ -1,11 +1,18 @@
-.modal-layer {
+:host {
   position: fixed;
   inset: 0;
-  z-index: 300;
+  z-index: 500;
+  display: block;
+  pointer-events: none;
+}
+
+.modal-layer {
+  position: absolute;
+  inset: 0;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 48px 16px 24px;
+  align-items: center;
+  padding: 24px 16px;
   overflow: auto;
   pointer-events: none;
 }
@@ -14,19 +21,21 @@
   position: fixed;
   inset: 0;
   background: var(--surface-overlay);
+  backdrop-filter: blur(6px);
   pointer-events: auto;
 }
 
 .modal {
   position: relative;
   z-index: 1;
-  width: min(1080px, 100%);
-  max-height: calc(100vh - 72px);
+  width: min(1040px, 100%);
+  max-height: min(880px, calc(100dvh - 48px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-4);
-  background: var(--surface-canvas);
+  background: var(--surface-panel);
   color: var(--text);
   box-shadow: var(--shadow-modal);
   pointer-events: auto;
@@ -37,8 +46,9 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 8px 8px 0;
-  min-height: 40px;
+  padding: 14px 14px 0;
+  min-height: 44px;
+  flex: 0 0 auto;
 }
 
 .toolbar-spacer {
@@ -49,11 +59,13 @@
   width: 36px;
   height: 36px;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-2);
   background: transparent;
   color: var(--text-muted);
-  font-size: 24px;
+  font-size: 22px;
+  line-height: 1;
   cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
 }
 
 .close:hover {
@@ -75,7 +87,7 @@
 }
 
 .cover + .modal-toolbar .close {
-  background: color-mix(in srgb, var(--surface-canvas) 75%, transparent);
+  background: color-mix(in srgb, var(--surface-panel) 80%, transparent);
 }
 
 .conflict {
@@ -101,21 +113,30 @@
 .modal-main {
   min-height: 0;
   overflow: auto;
-  padding: 8px 20px 24px;
+  padding: 4px 24px 28px;
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 20px;
 }
 
 .modal-sidebar {
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   border-left: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-panel) 55%, var(--surface-canvas));
-  padding: 12px 16px 20px;
+  background: color-mix(in srgb, var(--surface-interactive) 28%, var(--surface-panel));
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-comments {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .title-row {
@@ -151,17 +172,18 @@
   border-radius: var(--radius-2);
   background: transparent;
   color: var(--text);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  line-height: 1.3;
-  padding: 4px 6px;
+  line-height: 1.35;
+  padding: 6px 8px;
   outline: none;
 }
 
 .title:focus,
 textarea:focus,
 input:focus:not(.color-input),
-.checklist-add-input:focus {
+.checklist-add-input:focus,
+.checklist-edit-input:focus {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
@@ -169,7 +191,11 @@ input:focus:not(.color-input),
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 12px 16px;
+  gap: 14px 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-3);
+  background: color-mix(in srgb, var(--surface-interactive) 45%, transparent);
 }
 
 .action-item {
@@ -220,10 +246,11 @@ input:focus:not(.color-input),
 
 h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
 }
 
 .members-block h3 {
@@ -282,12 +309,19 @@ textarea,
 input:not(.color-input),
 .checklist-add-input {
   width: 100%;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: var(--radius-2);
   background: var(--surface-interactive);
   color: var(--text);
-  padding: 9px 10px;
+  padding: 10px 12px;
   outline: none;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+textarea:hover,
+input:not(.color-input):hover,
+.checklist-add-input:hover {
+  border-color: var(--border-strong);
 }
 
 textarea {
@@ -323,13 +357,21 @@ button[type='submit']:not(.priority-chip):disabled {
 
 .danger {
   width: 100%;
-  border: 0;
+  margin-top: auto;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
   border-radius: var(--radius-2);
-  background: var(--danger);
-  color: #fff;
+  background: transparent;
+  color: var(--danger);
   padding: 10px 14px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.danger:hover {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 65%, var(--border));
 }
 
 .checklist-block {
@@ -408,16 +450,67 @@ button[type='submit']:not(.priority-chip):disabled {
 }
 
 .checklist-text {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
   font-size: 14px;
   line-height: 1.45;
   color: var(--text);
-  padding-top: 1px;
+  padding: 1px 4px;
+  border-radius: var(--radius-1);
   overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.checklist-text:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--surface-interactive) 65%, transparent);
+}
+
+.checklist-text:disabled {
+  cursor: default;
+  opacity: 0.75;
 }
 
 .checklist-text.done {
   color: var(--text-muted);
   text-decoration: line-through;
+}
+
+.checklist-edit-input {
+  width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-2);
+  background: var(--surface-interactive);
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  outline: none;
+}
+
+.checklist-delete {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
+}
+
+.checklist-item:hover .checklist-delete,
+.checklist-delete:focus-visible {
+  opacity: 1;
+}
+
+.checklist-delete:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
 }
 
 .checklist-add {
@@ -480,7 +573,7 @@ button[type='submit']:not(.priority-chip):disabled {
 
 .feed-item time {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--text-muted);
 }
 
 .comment-item {
@@ -535,7 +628,8 @@ button[type='submit']:not(.priority-chip):disabled {
 
 @media (max-width: 900px) {
   .modal-layer {
-    padding: 16px 8px;
+    padding: 16px 10px;
+    align-items: flex-start;
   }
 
   .modal-body {
@@ -546,15 +640,16 @@ button[type='submit']:not(.priority-chip):disabled {
   .modal-sidebar {
     border-left: 0;
     border-top: 1px solid var(--border);
+    overflow: visible;
   }
 
   .modal-main,
-  .modal-sidebar {
+  .sidebar-comments {
     overflow: visible;
   }
 
   .modal {
-    max-height: none;
+    max-height: calc(100dvh - 32px);
   }
 }
 

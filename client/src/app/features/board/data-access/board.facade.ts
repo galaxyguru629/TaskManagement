@@ -45,6 +45,9 @@ import {
   CreateTaskMutationVariables,
   DefaultBoardDocument,
   DefaultBoardQuery,
+  DeleteChecklistItemDocument,
+  DeleteChecklistItemMutation,
+  DeleteChecklistItemMutationVariables,
   DeleteTaskDocument,
   DeleteTaskMutation,
   DeleteTaskMutationVariables,
@@ -71,6 +74,7 @@ import {
   applyBoardEvent,
   applyChecklistItem,
   applyComment,
+  removeChecklistItem,
   replaceChecklistTempId,
   replaceCommentTempId,
   applyListCreated,
@@ -458,13 +462,13 @@ export class BoardFacade {
   }
 
   updateChecklistItem(card: BoardCardModel, id: string, checked: boolean): void {
-    const snapshot = this.view();
-    const existing = card.checklist.find((item) => item.id === id);
-    if (!existing) return;
-
-    const optimistic = { ...existing, checked };
     const view = this.view();
-    if (view) this.view.set(applyChecklistItem(view, optimistic));
+    if (!view) return;
+
+    const existing = this.findChecklistItem(view, card.id, id);
+    if (!existing || id.startsWith('temp-checklist-')) return;
+
+    this.view.set(applyChecklistItem(view, { ...existing, checked }));
 
     this.apollo
       .mutate<UpdateChecklistItemMutation, UpdateChecklistItemMutationVariables>({ mutation: UpdateChecklistItemDocument, variables: { id, checked } })
@@ -475,8 +479,61 @@ export class BoardFacade {
           if (item && current) this.view.set(applyChecklistItem(current, item));
         },
         error: () => {
-          if (snapshot) this.view.set(snapshot);
+          const current = this.view();
+          if (current) this.view.set(applyChecklistItem(current, { ...existing, checked: existing.checked }));
           this.toast.error('Checklist update failed.');
+        },
+      });
+  }
+
+  renameChecklistItem(card: BoardCardModel, id: string, text: string): void {
+    const trimmed = text.trim();
+    const view = this.view();
+    if (!view || !trimmed) return;
+
+    const existing = this.findChecklistItem(view, card.id, id);
+    if (!existing || id.startsWith('temp-checklist-') || existing.text === trimmed) return;
+
+    this.view.set(applyChecklistItem(view, { ...existing, text: trimmed }));
+
+    this.apollo
+      .mutate<UpdateChecklistItemMutation, UpdateChecklistItemMutationVariables>({
+        mutation: UpdateChecklistItemDocument,
+        variables: { id, text: trimmed },
+      })
+      .subscribe({
+        next: ({ data }) => {
+          const item = data?.updateChecklistItem;
+          const current = this.view();
+          if (item && current) this.view.set(applyChecklistItem(current, item));
+        },
+        error: () => {
+          const current = this.view();
+          if (current) this.view.set(applyChecklistItem(current, existing));
+          this.toast.error('Checklist update failed.');
+        },
+      });
+  }
+
+  deleteChecklistItem(card: BoardCardModel, id: string): void {
+    const view = this.view();
+    if (!view) return;
+
+    const existing = this.findChecklistItem(view, card.id, id);
+    if (!existing || id.startsWith('temp-checklist-')) return;
+
+    this.view.set(removeChecklistItem(view, card.id, id));
+
+    this.apollo
+      .mutate<DeleteChecklistItemMutation, DeleteChecklistItemMutationVariables>({
+        mutation: DeleteChecklistItemDocument,
+        variables: { id },
+      })
+      .subscribe({
+        error: () => {
+          const current = this.view();
+          if (current) this.view.set(applyChecklistItem(current, existing));
+          this.toast.error('Checklist delete failed.');
         },
       });
   }
@@ -642,6 +699,14 @@ export class BoardFacade {
             }
           }
           const taskId = event.task?.id ?? null;
+          if (
+            (event.type === BoardEventType.ChecklistUpdated || event.type === BoardEventType.ChecklistItemDeleted) &&
+            event.checklistItem &&
+            event.actorId &&
+            event.actorId === this.currentUserSub()
+          ) {
+            return;
+          }
           if (event.clientMutationId && this.pendingMutationIds.has(event.clientMutationId)) {
             return;
           }
@@ -733,6 +798,11 @@ export class BoardFacade {
       ...items.filter((item) => item.taskId !== taskId),
       { taskId, localVersion, remoteVersion: remoteTask.version, remoteTask },
     ]);
+  }
+
+  private findChecklistItem(view: BoardViewModel, cardId: string, itemId: string) {
+    const card = view.lists.flatMap((list) => list.cards).find((candidate) => candidate.id === cardId);
+    return card?.checklist.find((item) => item.id === itemId);
   }
 
   private trackMutation(taskId?: string): string {

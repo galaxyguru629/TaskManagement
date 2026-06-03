@@ -18,7 +18,7 @@ export class SqlBuilder {
   }
 
   addSkipNull(column: string, value: unknown, transform?: (v: unknown) => unknown): void {
-    if (value === null) return;
+    if (value == null) return;
     this.add(column, value, transform);
   }
 

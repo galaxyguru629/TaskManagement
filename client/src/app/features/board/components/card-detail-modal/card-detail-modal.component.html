@@ -136,14 +136,42 @@
                       type="checkbox"
                       class="checklist-checkbox"
                       [checked]="item.checked"
-                      [disabled]="isTempChecklistItem(item.id)"
+                      [disabled]="isTempChecklistItem(item.id) || editingChecklistId() === item.id"
                       (change)="toggleChecklistItem.emit({ id: item.id, checked: $any($event.target).checked })"
                     />
                     <span class="checklist-box" aria-hidden="true"></span>
                   </label>
-                  <span class="checklist-text" [class.done]="item.checked">{{ item.text }}</span>
+                  @if (editingChecklistId() === item.id) {
+                    <input
+                      class="checklist-edit-input"
+                      [ngModel]="editingChecklistText()"
+                      (ngModelChange)="editingChecklistText.set($event)"
+                      (blur)="commitEditChecklist(item)"
+                      (keydown.enter)="commitEditChecklist(item)"
+                      (keydown.escape)="cancelEditChecklist()"
+                    />
+                  } @else {
+                    <button
+                      type="button"
+                      class="checklist-text"
+                      [class.done]="item.checked"
+                      [disabled]="isTempChecklistItem(item.id)"
+                      (click)="startEditChecklist(item)"
+                    >
+                      {{ item.text }}
+                    </button>
+                  }
                   @if (isTempChecklistItem(item.id)) {
                     <span class="pending-dot" aria-hidden="true"></span>
+                  } @else {
+                    <button
+                      type="button"
+                      class="checklist-delete"
+                      aria-label="Delete checklist item"
+                      (click)="deleteChecklistItem.emit(item.id)"
+                    >
+                      ×
+                    </button>
                   }
                 </li>
               }

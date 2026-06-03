@@ -82,6 +82,7 @@ export enum BoardEventType {
   CardDeleted = 'CARD_DELETED',
   CardMoved = 'CARD_MOVED',
   CardUpdated = 'CARD_UPDATED',
+  ChecklistItemDeleted = 'CHECKLIST_ITEM_DELETED',
   ChecklistUpdated = 'CHECKLIST_UPDATED',
   CommentCreated = 'COMMENT_CREATED',
   LabelUpdated = 'LABEL_UPDATED',
@@ -161,6 +162,12 @@ export type ChecklistItem = {
   text: Scalars['String']['output'];
 };
 
+export type ChecklistItemDeleteResult = {
+  __typename?: 'ChecklistItemDeleteResult';
+  checklistItem: ChecklistItem;
+  success: Scalars['Boolean']['output'];
+};
+
 export type CreateBoardInput = {
   background?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
@@ -236,6 +243,7 @@ export type Mutation = {
   createList: TaskList;
   createTask: Task;
   declineInvitation: BoardInvitation;
+  deleteChecklistItem: ChecklistItemDeleteResult;
   deleteTask: TaskDeleteResult;
   inviteMember: BoardInvitation;
   moveTask: TaskUpdateResult;
@@ -289,6 +297,11 @@ export type MutationCreateTaskArgs = {
 
 
 export type MutationDeclineInvitationArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteChecklistItemArgs = {
   id: Scalars['ID']['input'];
 };
 
@@ -722,6 +735,13 @@ export type UpdateChecklistItemMutationVariables = Exact<{
 
 
 export type UpdateChecklistItemMutation = { __typename?: 'Mutation', updateChecklistItem?: { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number } | null };
+
+export type DeleteChecklistItemMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteChecklistItemMutation = { __typename?: 'Mutation', deleteChecklistItem: { __typename?: 'ChecklistItemDeleteResult', success: boolean, checklistItem: { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number } } };
 
 export type AddCommentMutationVariables = Exact<{
   taskId: Scalars['ID']['input'];
@@ -1330,6 +1350,27 @@ export const UpdateChecklistItemDocument = gql`
   })
   export class UpdateChecklistItemGQL extends Apollo.Mutation<UpdateChecklistItemMutation, UpdateChecklistItemMutationVariables> {
     override document = UpdateChecklistItemDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const DeleteChecklistItemDocument = gql`
+    mutation DeleteChecklistItem($id: ID!) {
+  deleteChecklistItem(id: $id) {
+    success
+    checklistItem {
+      ...ChecklistItemFields
+    }
+  }
+}
+    ${ChecklistItemFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class DeleteChecklistItemGQL extends Apollo.Mutation<DeleteChecklistItemMutation, DeleteChecklistItemMutationVariables> {
+    override document = DeleteChecklistItemDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

@@ -21,6 +21,7 @@ import {
   createList,
   createTask,
   declineInvitation,
+  deleteChecklistItem,
   deleteTask,
   getBoard,
   getBoardForUser,
@@ -455,6 +456,29 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
           });
         }
         return item;
+      },
+      deleteChecklistItem: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+        const boardIdQuery = await deps.db.query<{ board_id: string }>(
+          'SELECT t.board_id FROM checklist_items ci JOIN tasks t ON t.id = ci.task_id WHERE ci.id = $1',
+          [id],
+        );
+        const boardId = boardIdQuery.rows[0]?.board_id ?? null;
+        if (!boardId) {
+          throw new GraphQLError('Checklist item not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
+        const item = await deleteChecklistItem(deps.db, id, user);
+        if (!item) {
+          throw new GraphQLError('Checklist item not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await deps.publishBoardEvent({
+          type: BoardEventType.CHECKLIST_ITEM_DELETED,
+          boardId,
+          checklistItem: item,
+          ...boardEventSource(user),
+        });
+        return { success: true, checklistItem: item };
       },
       addComment: async (_: unknown, { taskId, body }: { taskId: string; body: string }, context: GraphQLContext) => {
         const boardId = await boardIdForTask(deps.db, taskId);
