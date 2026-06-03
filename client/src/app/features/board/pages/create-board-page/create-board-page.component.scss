@@ -1,0 +1,124 @@
+.create-board-page {
+  padding: clamp(20px, 3vw, 40px);
+  display: grid;
+  place-items: start center;
+}
+
+.card {
+  width: min(680px, 100%);
+  background: var(--surface-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: clamp(16px, 2.2vw, 28px);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  margin: 8px 0 4px;
+}
+
+.subtitle {
+  margin: 0 0 16px;
+  color: var(--text-muted);
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+input,
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-elevated);
+  color: var(--text);
+  padding: 10px 12px;
+}
+
+.upload-dropzone {
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  min-height: 88px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--surface-elevated) 86%, transparent);
+  position: relative;
+}
+
+.upload-dropzone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-dropzone span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.preview {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+}
+
+.remove-image {
+  align-self: center;
+  border-radius: 8px;
+  background: var(--surface-interactive);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.preview.removable:hover .remove-image,
+.preview.removable:focus-within .remove-image {
+  color: var(--text);
+}
+
+.actions {
+  margin-top: 4px;
+}
+
+button {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+}

@@ -1,12 +1,100 @@
 <header class="board-header">
-  <div class="board-title">
-    <h1>{{ board()?.title || (loading() ? 'Loading board' : 'Board') }}</h1>
-    @if (board()?.description) {
-      <p>{{ board()?.description }}</p>
+  <div class="board-title-area">
+    @if (loading() && !board()?.title) {
+      <div class="ui-skeleton board-logo-skeleton"></div>
+      <div class="board-title">
+        <div class="ui-skeleton title-skeleton"></div>
+      </div>
+    } @else {
+      @if (board()?.logoUrl) {
+        <img class="board-logo" [src]="board()?.logoUrl!" [alt]="(board()?.title || 'Board') + ' logo'" />
+      }
+      <div class="board-title">
+        <h1>{{ board()?.title || 'Board' }}</h1>
+      </div>
     }
+    <div class="members" aria-label="Board members">
+      @for (member of members(); track member.auth0Sub) {
+        <div class="member-avatar" [class.owner]="member.role === 'OWNER'" [title]="(member.displayName || member.email || 'Member') + ' (' + member.role + ')'">
+          @if (member.pictureUrl) {
+            <img [src]="member.pictureUrl" [alt]="member.displayName || member.email || 'Member'" />
+          } @else {
+            <span>{{ initials(member) }}</span>
+          }
+        </div>
+      }
+    </div>
   </div>
   <div class="board-actions">
     <span class="live-pill">Live</span>
-    <button type="button" class="header-button" (click)="simulateFailure.emit()">Fail next mutation</button>
+    @if (canInvite()) {
+      <form class="invite-form" (ngSubmit)="sendInvite()">
+        <div class="invite-picker" #inviteMenuRoot (click)="keepInviteMenuOpen($event)">
+          <button type="button" class="invite-picker-trigger" (click)="toggleInviteMenu($event)" [attr.aria-expanded]="inviteMenuOpen">
+            @if (selectedInviteContact(); as selected) {
+              <span class="contact-avatar">
+                @if (selected.pictureUrl) {
+                  <img [src]="selected.pictureUrl" [alt]="selected.displayName || selected.email" />
+                } @else {
+                  {{ avatarInitials(selected) }}
+                }
+              </span>
+              <span class="contact-label">{{ selected.displayName || selected.email }}</span>
+            } @else {
+              <span class="contact-label">Select user to invite</span>
+            }
+          </button>
+
+          @if (inviteMenuOpen) {
+            <div class="invite-picker-menu" (click)="keepInviteMenuOpen($event)">
+              <input
+                type="text"
+                name="inviteSearch"
+                [ngModel]="inviteSearch"
+                (ngModelChange)="inviteSearch = $event"
+                (click)="keepInviteMenuOpen($event)"
+                placeholder="Search users..." />
+              <div class="invite-options">
+                @for (contact of filteredContacts(); track contact.email) {
+                  <button type="button" class="invite-option" (click)="selectInviteContact(contact.email, $event)">
+                    <span class="contact-avatar">
+                      @if (contact.pictureUrl) {
+                        <img [src]="contact.pictureUrl" [alt]="contact.displayName || contact.email" />
+                      } @else {
+                        {{ avatarInitials(contact) }}
+                      }
+                    </span>
+                    <span class="contact-meta">
+                      <strong>{{ contact.displayName || contact.email }}</strong>
+                      @if (contact.displayName) {
+                        <small>{{ contact.email }}</small>
+                      }
+                    </span>
+                  </button>
+                } @empty {
+                  <p class="invite-empty">No matching users.</p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+        <select name="inviteRole" [ngModel]="inviteRole" (ngModelChange)="inviteRole = $event">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ role }}</option>
+          }
+        </select>
+        <button type="submit" class="header-button">Invite</button>
+      </form>
+    }
   </div>
 </header>
+@if (canInvite() && invitations().length) {
+  <section class="invitation-list">
+    <h3>Pending invitations</h3>
+    <div class="chips">
+      @for (invitation of invitations(); track invitation.id) {
+        <span class="chip">{{ invitation.email }} ({{ invitation.role }})</span>
+      }
+    </div>
+  </section>
+}

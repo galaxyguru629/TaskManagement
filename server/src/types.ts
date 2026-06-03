@@ -1,9 +1,3 @@
-export enum TaskStatus {
-  TODO = 'TODO',
-  IN_PROGRESS = 'IN_PROGRESS',
-  DONE = 'DONE',
-}
-
 export enum TaskEventType {
   CREATED = 'CREATED',
   UPDATED = 'UPDATED',
@@ -30,15 +24,28 @@ export enum SortDirection {
   DESC = 'DESC',
 }
 
+export enum BoardRole {
+  OWNER = 'OWNER',
+  ADMIN = 'ADMIN',
+  MEMBER = 'MEMBER',
+}
+
+export enum InvitationStatus {
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  DECLINED = 'DECLINED',
+  REVOKED = 'REVOKED',
+  EXPIRED = 'EXPIRED',
+}
+
 export interface Task {
   id: string;
   boardId: string;
   listId: string;
   title: string;
   description: string | null;
-  status: TaskStatus;
   priority: number;
-  assignee: string | null;
+  assignees: string[];
   position: number;
   dueDate: string | null;
   coverColor: string | null;
@@ -52,6 +59,8 @@ export interface Board {
   title: string;
   description: string | null;
   background: string;
+  logoUrl: string | null;
+  createdByAuth0Sub: string;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -61,7 +70,6 @@ export interface TaskList {
   id: string;
   boardId: string;
   title: string;
-  status: TaskStatus | null;
   position: number;
   archived: boolean;
   version: number;
@@ -101,6 +109,43 @@ export interface ActivityItem {
   createdAt: string;
 }
 
+export interface UserProfile {
+  auth0Sub: string;
+  displayName: string;
+  email: string | null;
+  pictureUrl: string | null;
+  isOnboarded: boolean;
+  lastSeenAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoardMember {
+  boardId: string;
+  auth0Sub: string;
+  role: BoardRole;
+  displayName: string | null;
+  email: string | null;
+  pictureUrl: string | null;
+  invitedBy: string | null;
+  createdAt: string;
+}
+
+export interface BoardInvitation {
+  id: string;
+  boardId: string;
+  boardTitle: string;
+  boardBackground: string;
+  email: string;
+  role: BoardRole;
+  status: InvitationStatus;
+  invitedBy: string;
+  acceptedBy: string | null;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BoardCard extends Task {
   labels: Label[];
   checklist: ChecklistItem[];
@@ -119,7 +164,6 @@ export interface BoardView {
 }
 
 export interface TaskFilterInput {
-  status?: TaskStatus | null;
   search?: string | null;
 }
 
@@ -133,21 +177,20 @@ export interface CreateTaskInput {
   listId?: string | null;
   title: string;
   description?: string | null;
-  status?: TaskStatus;
   priority?: number;
-  assignee?: string | null;
+  assignees?: string[] | null;
   position?: number | null;
   dueDate?: string | null;
   coverColor?: string | null;
+  clientMutationId?: string | null;
 }
 
 export interface UpdateTaskInput {
   listId?: string | null;
   title?: string;
   description?: string | null;
-  status?: TaskStatus;
   priority?: number;
-  assignee?: string | null;
+  assignees?: string[] | null;
   position?: number | null;
   dueDate?: string | null;
   coverColor?: string | null;
@@ -159,6 +202,7 @@ export interface CreateBoardInput {
   title: string;
   description?: string | null;
   background?: string | null;
+  logoImageData?: string | null;
 }
 
 export interface UpdateBoardInput {
@@ -170,13 +214,11 @@ export interface UpdateBoardInput {
 export interface CreateListInput {
   boardId: string;
   title: string;
-  status?: TaskStatus | null;
   position?: number | null;
 }
 
 export interface UpdateListInput {
   title?: string | null;
-  status?: TaskStatus | null;
   position?: number | null;
   archived?: boolean | null;
   clientMutationId?: string | null;
@@ -187,7 +229,18 @@ export interface MoveTaskInput {
   taskId: string;
   toListId: string;
   position: number;
-  status?: TaskStatus | null;
   expectedVersion?: number | null;
   clientMutationId?: string | null;
+}
+
+export interface UpdateMyProfileInput {
+  displayName: string;
+  pictureUrl?: string | null;
+}
+
+export interface InviteMemberInput {
+  boardId: string;
+  email: string;
+  role?: BoardRole | null;
+  expiresInDays?: number | null;
 }

@@ -2,7 +2,7 @@
   box-sizing: border-box;
   border-radius: var(--radius-2);
   box-shadow: var(--shadow-popover);
-  transform: rotate(2deg);
+  transform: rotate(1.5deg);
 }
 
 .cdk-drag-placeholder {
@@ -17,7 +17,7 @@
 @keyframes modal-in {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(12px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -28,7 +28,7 @@
 @keyframes popover-in {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;

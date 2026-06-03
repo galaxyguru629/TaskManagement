@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BoardFacade } from '../../data-access/board.facade';
 import { BoardHeaderComponent } from '../../components/board-header/board-header.component';
 import { BoardCanvasComponent } from '../../components/board-canvas/board-canvas.component';
@@ -15,8 +16,15 @@ import { CardDetailModalComponent } from '../../components/card-detail-modal/car
 })
 export class BoardPageComponent implements OnInit {
   readonly facade = inject(BoardFacade);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   ngOnInit(): void {
-    this.facade.init();
+    const boardId = this.route.snapshot.paramMap.get('boardId');
+    if (!boardId) {
+      void this.router.navigate(['/home']);
+      return;
+    }
+    this.facade.init(boardId);
   }
 }

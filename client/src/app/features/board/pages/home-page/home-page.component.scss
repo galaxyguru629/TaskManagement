@@ -1,0 +1,226 @@
+.home-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: clamp(18px, 3vw, 30px);
+  display: grid;
+  gap: var(--space-6);
+  color: var(--text);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+h1 {
+  margin: 8px 0 6px;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.15;
+}
+
+.hero-subtitle {
+  margin: 0;
+  color: var(--text-subtle);
+  max-width: 58ch;
+  line-height: 1.5;
+}
+
+.create-board {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-3);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+  display: grid;
+  gap: 10px;
+}
+
+.create-board h2 {
+  margin: 0 0 2px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.create-board input,
+.create-board button,
+.actions button {
+  border-radius: var(--radius-2);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.create-board input {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-panel);
+  color: var(--text);
+}
+
+.create-board input:focus {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.create-board button,
+.actions button {
+  cursor: pointer;
+  border: 0;
+  font-weight: 700;
+  transition: background var(--motion-fast), transform var(--motion-fast);
+}
+
+.create-board button {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.create-board button:hover:not(:disabled),
+.actions button:hover {
+  transform: translateY(-1px);
+}
+
+.create-board button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.board-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.board-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.board-card {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-3);
+  color: #fff;
+  min-height: 128px;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), filter var(--motion-fast);
+}
+
+.board-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+  filter: saturate(1.08);
+}
+
+.board-card strong,
+.board-card span {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.board-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.24);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.board-card small {
+  opacity: 0.85;
+}
+
+.invites {
+  display: grid;
+  gap: 10px;
+}
+
+.invite-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-3);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.invite-card p {
+  margin: 4px 0 0;
+  color: var(--text-subtle);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actions button {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.actions .secondary {
+  background: var(--surface-interactive);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+
+.loading,
+.empty,
+.error {
+  color: var(--text-subtle);
+  margin: 0;
+}
+
+.skeleton-heading {
+  width: 160px;
+  height: 22px;
+}
+
+.board-card-skeleton {
+  min-height: 128px;
+  border-radius: var(--radius-3);
+}
+
+.error {
+  color: var(--danger);
+}
+
+@media (max-width: 920px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .create-board {
+    width: min(460px, 100%);
+  }
+}

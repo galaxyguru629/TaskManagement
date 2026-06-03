@@ -1,0 +1,27 @@
+<div class="due-date-picker">
+  <input #inputEl type="text" class="due-date-hidden" tabindex="-1" aria-hidden="true" />
+
+  <button type="button" class="due-trigger" [class.has-date]="!!value()" (click)="openPicker()">
+    <span class="due-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path
+          d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"
+        />
+      </svg>
+    </span>
+    <span class="due-text">{{ displayLabel() || 'Dates' }}</span>
+    @if (statusLabel(); as label) {
+      <span class="due-badge" [class.overdue]="dueStatus() === 'overdue'" [class.soon]="dueStatus() === 'soon'">{{ label }}</span>
+    }
+  </button>
+
+  @if (value()) {
+    <button type="button" class="clear-btn" aria-label="Clear due date" (click)="clear($event)">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+        <path
+          d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+        />
+      </svg>
+    </button>
+  }
+</div>

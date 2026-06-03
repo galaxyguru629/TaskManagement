@@ -1,0 +1,127 @@
+.member-picker {
+  position: relative;
+}
+
+.member-picker-trigger {
+  width: 100%;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--surface-panel);
+  color: var(--text);
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.member-picker-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 320;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-modal);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.member-picker-menu input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--surface-interactive);
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+.member-options {
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.member-option {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.member-option:hover {
+  background: var(--surface-interactive);
+}
+
+.member-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.member-avatar.muted {
+  color: var(--text-muted);
+}
+
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-label.muted {
+  color: var(--text-muted);
+}
+
+.member-meta {
+  display: grid;
+  min-width: 0;
+}
+
+.member-meta strong,
+.member-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-meta small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.member-empty {
+  margin: 0;
+  padding: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}

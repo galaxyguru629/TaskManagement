@@ -46,6 +46,7 @@ export class TokenService {
         this.auth.getAccessTokenSilently({
           authorizationParams: {
             audience: environment.auth0.audience,
+            scope: 'openid profile email',
           },
         }),
       );

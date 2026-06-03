@@ -1,0 +1,105 @@
+<main class="profile-page">
+  <section class="profile-hero">
+    <div>
+      <p class="eyebrow">Profile</p>
+      @if (showSkeleton() && loading()) {
+        <div class="ui-skeleton skeleton-title"></div>
+        <div class="ui-skeleton skeleton-subtitle"></div>
+      } @else {
+        <h1>{{ profile()?.displayName || 'Your profile' }}</h1>
+        <p class="subtitle">{{ profile()?.email || 'Signed in with Auth0' }}</p>
+        @if (avatarDataUrl(); as avatar) {
+          <img class="avatar" [src]="avatar" alt="Profile avatar" />
+        }
+      }
+    </div>
+
+    <a routerLink="/home" class="board-link">Back to home</a>
+  </section>
+
+  <section class="profile-content">
+    @if (showSkeleton() && loading()) {
+      <article class="profile-card">
+        <div class="ui-skeleton skeleton-block"></div>
+        <div class="ui-skeleton skeleton-block short"></div>
+        <div class="ui-skeleton skeleton-block"></div>
+      </article>
+      <article class="profile-card details">
+        <div class="ui-skeleton skeleton-block"></div>
+        <div class="ui-skeleton skeleton-line"></div>
+        <div class="ui-skeleton skeleton-line"></div>
+        <div class="ui-skeleton skeleton-line"></div>
+      </article>
+    } @else {
+      <article class="profile-card">
+        <header>
+          <h2>Display name</h2>
+          <p>This is the name other people see on board activity and comments.</p>
+        </header>
+
+        <form (submit)="save($event)" novalidate>
+          <label for="avatarFile">Avatar</label>
+          <label class="upload-dropzone" for="avatarFile">
+            <input id="avatarFile" type="file" accept="image/*" (change)="onAvatarSelected($event)" />
+            <span>{{ avatarFileName() || 'Choose image (max 1.5 MB)' }}</span>
+          </label>
+          @if (avatarDataUrl(); as avatar) {
+            <div class="avatar-preview-card">
+              <img class="avatar-preview" [src]="avatar" alt="Avatar preview" />
+              <button type="button" class="remove-avatar" (click)="removeAvatar()" aria-label="Remove avatar">Remove</button>
+            </div>
+          }
+
+          <label for="displayName">Name</label>
+          <input id="displayName" type="text" autocomplete="name" [formControl]="displayName" maxlength="80" name="displayName" />
+
+          @if (displayName.touched && displayName.hasError('required')) {
+            <p class="field-error">Name is required.</p>
+          } @else if (displayName.touched && displayName.hasError('maxlength')) {
+            <p class="field-error">Name must be 80 characters or fewer.</p>
+          }
+
+          @if (error()) {
+            <p class="form-error">{{ error() }}</p>
+          } @else if (saved()) {
+            <p class="saved">Profile saved.</p>
+          }
+
+          <button type="submit" [disabled]="displayName.invalid || saving() || loading()">
+            {{ saving() ? 'Saving...' : 'Save profile' }}
+          </button>
+        </form>
+      </article>
+
+      <article class="profile-card details">
+        <header>
+          <h2>Account</h2>
+          <p>Identity data from Auth0 synced into this app profile.</p>
+        </header>
+
+        <dl>
+          <div>
+            <dt>Auth0 subject</dt>
+            <dd>{{ profile()?.auth0Sub || '—' }}</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>{{ profile()?.email || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Updated</dt>
+            <dd>{{ profile()?.updatedAt ? (profile()?.updatedAt | date: 'medium') : '—' }}</dd>
+          </div>
+          <div>
+            <dt>Last seen</dt>
+            <dd>{{ profile()?.lastSeenAt ? (profile()?.lastSeenAt | date: 'medium') : 'No activity yet' }}</dd>
+          </div>
+          <div>
+            <dt>Onboarding</dt>
+            <dd>{{ profile()?.isOnboarded ? 'Completed' : 'Pending' }}</dd>
+          </div>
+        </dl>
+      </article>
+    }
+  </section>
+</main>

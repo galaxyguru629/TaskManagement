@@ -1,0 +1,46 @@
+<main class="profile-gate">
+  <section class="profile-panel" aria-labelledby="profile-title">
+    <p class="eyebrow">Account setup</p>
+    <h1 id="profile-title">Enter your name</h1>
+    <p class="intro">This name is used for comments, board activity, and live collaboration.</p>
+
+    <form (submit)="submit($event)" novalidate>
+      @if (avatarDataUrl(); as avatar) {
+        <div class="avatar-preview-card">
+          <img class="avatar-preview" [src]="avatar" alt="Avatar preview" />
+          <button type="button" class="remove-avatar" (click)="removeAvatar()" aria-label="Remove avatar">Remove</button>
+        </div>
+      }
+      <label for="avatarFile">Avatar</label>
+      <label class="upload-dropzone" for="avatarFile">
+        <input id="avatarFile" type="file" accept="image/*" (change)="onAvatarSelected($event)" />
+        <span>{{ avatarFileName() || 'Choose image (max 1.5 MB)' }}</span>
+      </label>
+
+      <label for="displayName">Display name</label>
+      <input
+        id="displayName"
+        type="text"
+        autocomplete="name"
+        [formControl]="displayName"
+        maxlength="80"
+        name="displayName"
+        placeholder="Your name"
+      />
+
+      @if (displayName.touched && displayName.hasError('required')) {
+        <p class="field-error">Name is required.</p>
+      } @else if (displayName.touched && displayName.hasError('maxlength')) {
+        <p class="field-error">Name must be 80 characters or fewer.</p>
+      }
+
+      @if (error()) {
+        <p class="form-error">{{ error() }}</p>
+      }
+
+      <button type="submit" [disabled]="displayName.invalid || saving()">
+        {{ saving() ? 'Saving...' : 'Continue' }}
+      </button>
+    </form>
+  </section>
+</main>

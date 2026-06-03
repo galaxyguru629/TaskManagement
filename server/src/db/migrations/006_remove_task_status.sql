@@ -1,0 +1,5 @@
+ALTER TABLE tasks
+  DROP COLUMN IF EXISTS status;
+
+ALTER TABLE task_lists
+  DROP COLUMN IF EXISTS status;

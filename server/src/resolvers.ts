@@ -15,29 +15,45 @@ import {
 import {
   addComment,
   createBoard,
+  inviteMember,
   createChecklistItem,
   createLabel,
   createList,
   createTask,
-  deleteTask,
+  declineInvitation,
   getBoard,
+  getBoardForUser,
+  getBoardRole,
   getBoardView,
-  getDefaultBoard,
+  getDefaultBoardForUser,
   getTask,
+  getTaskForUser,
+  getUserProfile,
+  listBoardInvitations,
+  listProjectUsers,
+  listMyPendingInvitations,
+  listBoardMembers,
   listBoards,
-  listTasks,
+  listBoardsForUser,
+  listBoardIdsForUser,
+  listTasksForUser,
   moveTask,
+  profileActor,
   setTaskLabels,
+  acceptInvitation,
   updateBoard,
   updateChecklistItem,
   updateList,
   updateTask,
+  updateUserProfile,
   type BoardEvent,
   type TaskEvent,
 } from './domain/repository.js';
 import {
   BoardEventType,
+  BoardRole,
   CreateBoardInput,
+  InviteMemberInput,
   CreateListInput,
   CreateTaskInput,
   TaskEventType,
@@ -46,6 +62,8 @@ import {
   UpdateBoardInput,
   UpdateListInput,
   UpdateTaskInput,
+  type UpdateMyProfileInput,
+  type UserProfile,
   type MoveTaskInput,
 } from './types.js';
 
@@ -55,7 +73,6 @@ const schemaPath = existsSync(join(__dirname, 'schema.graphql'))
   : resolve(__dirname, '..', 'src', 'schema.graphql');
 const typeDefs = readFileSync(schemaPath, 'utf-8');
 
-let simulateFailure = false;
 
 interface ResolverDeps {
   db: DbClient;
@@ -74,18 +91,6 @@ const defaultDeps: ResolverDeps = {
   taskEvents: taskEventStream,
 };
 
-function networkFailure(): GraphQLError {
-  return new GraphQLError('Simulated network failure', {
-    extensions: { code: 'SIMULATED_NETWORK_FAILURE' },
-  });
-}
-
-function ensureMutationAllowed(): void {
-  if (simulateFailure) {
-    throw networkFailure();
-  }
-}
-
 function taskEventType(boardType: BoardEventType): TaskEventType {
   if (boardType === BoardEventType.CARD_CREATED) return TaskEventType.CREATED;
   if (boardType === BoardEventType.CARD_DELETED || boardType === BoardEventType.CARD_ARCHIVED) return TaskEventType.DELETED;
@@ -100,6 +105,44 @@ function boardEventSource(user: ReturnType<typeof requireUser>, clientMutationId
   };
 }
 
+function profileRequiredError(): GraphQLError {
+  return new GraphQLError('Complete your profile before using the board.', {
+    extensions: { code: 'PROFILE_REQUIRED' },
+  });
+}
+
+async function requireProfile(db: DbClient, context: GraphQLContext): Promise<UserProfile> {
+  const user = requireUser(context);
+  const profile = await getUserProfile(db, user);
+  if (!profile || !profile.isOnboarded) {
+    throw profileRequiredError();
+  }
+  return profile;
+}
+
+function forbiddenError(message = 'You do not have permission to access this board.'): GraphQLError {
+  return new GraphQLError(message, { extensions: { code: 'FORBIDDEN' } });
+}
+
+async function requireBoardRole(db: DbClient, boardId: string, context: GraphQLContext, allowed: BoardRole[]): Promise<UserProfile> {
+  const profile = await requireProfile(db, context);
+  const role = await getBoardRole(db, boardId, profile.auth0Sub);
+  if (!role || !allowed.includes(role)) {
+    throw forbiddenError();
+  }
+  return profile;
+}
+
+async function boardIdForTask(db: DbClient, taskId: string): Promise<string | null> {
+  const result = await db.query<{ board_id: string }>('SELECT board_id FROM tasks WHERE id = $1', [taskId]);
+  return result.rows[0]?.board_id ?? null;
+}
+
+async function boardIdForList(db: DbClient, listId: string): Promise<string | null> {
+  const result = await db.query<{ board_id: string }>('SELECT board_id FROM task_lists WHERE id = $1', [listId]);
+  return result.rows[0]?.board_id ?? null;
+}
+
 async function publishCardEvents(
   deps: ResolverDeps,
   type: BoardEventType,
@@ -111,29 +154,62 @@ async function publishCardEvents(
   await deps.publishTaskEvent({ type: taskEventType(type), task });
 }
 
+async function* filterTaskEventsForBoards(
+  stream: AsyncIterable<{ taskChanged: TaskEvent }>,
+  allowedBoardIds: Set<string>,
+): AsyncIterable<{ taskChanged: TaskEvent }> {
+  for await (const event of stream) {
+    const boardId = event.taskChanged.task.boardId;
+    if (allowedBoardIds.has(boardId)) {
+      yield event;
+    }
+  }
+}
+
 export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
   const resolvers = {
     Query: {
       health: () => 'ok',
-      boards: (_: unknown, __: unknown, context: GraphQLContext) => {
-        requireUser(context);
-        return listBoards(deps.db);
+      me: (_: unknown, __: unknown, context: GraphQLContext) => {
+        const user = requireUser(context);
+        return getUserProfile(deps.db, user);
       },
-      board: (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
-        requireUser(context);
-        return getBoard(deps.db, id);
+      boardMembers: async (_: unknown, { boardId }: { boardId: string }, context: GraphQLContext) => {
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        return listBoardMembers(deps.db, boardId);
       },
-      defaultBoard: (_: unknown, __: unknown, context: GraphQLContext) => {
-        requireUser(context);
-        return getDefaultBoard(deps.db);
+      projectUsers: async (_: unknown, { boardId }: { boardId: string }, context: GraphQLContext) => {
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        return listProjectUsers(deps.db);
       },
-      boardView: (_: unknown, { boardId }: { boardId: string }, context: GraphQLContext) => {
-        requireUser(context);
+      boardInvitations: async (_: unknown, { boardId }: { boardId: string }, context: GraphQLContext) => {
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN]);
+        return listBoardInvitations(deps.db, boardId);
+      },
+      myInvitations: async (_: unknown, __: unknown, context: GraphQLContext) => {
+        const profile = await requireProfile(deps.db, context);
+        if (!profile.email) return [];
+        return listMyPendingInvitations(deps.db, profile.email);
+      },
+      boards: async (_: unknown, __: unknown, context: GraphQLContext) => {
+        const profile = await requireProfile(deps.db, context);
+        return listBoardsForUser(deps.db, profile.auth0Sub);
+      },
+      board: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+        const profile = await requireProfile(deps.db, context);
+        return getBoardForUser(deps.db, id, profile.auth0Sub);
+      },
+      defaultBoard: async (_: unknown, __: unknown, context: GraphQLContext) => {
+        const profile = await requireProfile(deps.db, context);
+        return getDefaultBoardForUser(deps.db, profile.auth0Sub);
+      },
+      boardView: async (_: unknown, { boardId }: { boardId: string }, context: GraphQLContext) => {
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
         return getBoardView(deps.db, boardId);
       },
-      task: (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
-        requireUser(context);
-        return getTask(deps.db, id);
+      task: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+        const profile = await requireProfile(deps.db, context);
+        return getTaskForUser(deps.db, id, profile.auth0Sub);
       },
       tasks: async (
         _: unknown,
@@ -145,10 +221,10 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         },
         context: GraphQLContext,
       ) => {
-        requireUser(context);
+        const profile = await requireProfile(deps.db, context);
         const page = Math.max(1, args.page);
         const pageSize = Math.min(100, Math.max(1, args.pageSize));
-        const { nodes, totalCount } = await listTasks(deps.db, page, pageSize, args.filter, args.sort);
+        const { nodes, totalCount } = await listTasksForUser(deps.db, profile.auth0Sub, page, pageSize, args.filter, args.sort);
         const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
         return {
           nodes,
@@ -163,17 +239,48 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
       },
     },
     Mutation: {
-      simulateNetworkFailure: (_: unknown, __: unknown, context: GraphQLContext) => {
-        requireUser(context);
-        simulateFailure = true;
-        setTimeout(() => {
-          simulateFailure = false;
-        }, 5000);
-        return true;
+      updateMyProfile: async (_: unknown, { input }: { input: UpdateMyProfileInput }, context: GraphQLContext) => {
+        const user = requireUser(context);
+        return updateUserProfile(deps.db, user, input);
+      },
+      inviteMember: async (_: unknown, { input }: { input: InviteMemberInput }, context: GraphQLContext) => {
+        const profile = await requireBoardRole(deps.db, input.boardId, context, [BoardRole.OWNER, BoardRole.ADMIN]);
+        const invitation = await inviteMember(deps.db, input, profile.auth0Sub);
+        await deps.publishBoardEvent({
+          type: BoardEventType.BOARD_UPDATED,
+          boardId: invitation.boardId,
+          ...boardEventSource(profileActor(profile)),
+        });
+        return invitation;
+      },
+      acceptInvitation: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+        const profile = await requireProfile(deps.db, context);
+        const invitation = await acceptInvitation(deps.db, id, profileActor(profile));
+        if (!invitation) {
+          throw new GraphQLError('Invitation not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await deps.publishBoardEvent({
+          type: BoardEventType.BOARD_UPDATED,
+          boardId: invitation.boardId,
+          ...boardEventSource(profileActor(profile)),
+        });
+        return invitation;
+      },
+      declineInvitation: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+        const profile = await requireProfile(deps.db, context);
+        const invitation = await declineInvitation(deps.db, id, profileActor(profile));
+        if (!invitation) {
+          throw new GraphQLError('Invitation not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await deps.publishBoardEvent({
+          type: BoardEventType.BOARD_UPDATED,
+          boardId: invitation.boardId,
+          ...boardEventSource(profileActor(profile)),
+        });
+        return invitation;
       },
       createBoard: async (_: unknown, { input }: { input: CreateBoardInput }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        const user = profileActor(await requireProfile(deps.db, context));
         return createBoard(deps.db, input, user);
       },
       updateBoard: async (
@@ -181,8 +288,8 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         { id, input, expectedVersion }: { id: string; input: UpdateBoardInput; expectedVersion?: number | null },
         context: GraphQLContext,
       ) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        await requireBoardRole(deps.db, id, context, [BoardRole.OWNER, BoardRole.ADMIN]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const result = await updateBoard(deps.db, id, input, expectedVersion, user);
         if (result.board && !result.conflict) {
           await deps.publishBoardEvent({ type: BoardEventType.BOARD_UPDATED, boardId: result.board.id });
@@ -190,10 +297,10 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         return { success: Boolean(result.board && !result.conflict), conflict: result.conflict, board: result.board };
       },
       createList: async (_: unknown, { input }: { input: CreateListInput }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        await requireBoardRole(deps.db, input.boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const list = await createList(deps.db, input, user);
-        await deps.publishBoardEvent({ type: BoardEventType.LIST_CREATED, boardId: list.boardId, list });
+        await deps.publishBoardEvent({ type: BoardEventType.LIST_CREATED, boardId: list.boardId, list, ...boardEventSource(user) });
         return list;
       },
       updateList: async (
@@ -201,8 +308,12 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         { id, input, expectedVersion }: { id: string; input: UpdateListInput; expectedVersion?: number | null },
         context: GraphQLContext,
       ) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        const boardId = await boardIdForList(deps.db, id);
+        if (!boardId) {
+          throw new GraphQLError('List not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const result = await updateList(deps.db, id, input, expectedVersion, user);
         if (result.list && !result.conflict) {
           await deps.publishBoardEvent({
@@ -215,10 +326,14 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         return { success: Boolean(result.list && !result.conflict), conflict: result.conflict, list: result.list };
       },
       createTask: async (_: unknown, { input }: { input: CreateTaskInput }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        const boardId = input.boardId ?? (await getDefaultBoardForUser(deps.db, (await requireProfile(deps.db, context)).auth0Sub))?.id;
+        if (!boardId) {
+          throw new GraphQLError('No accessible board found for this user.', { extensions: { code: 'FORBIDDEN' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const task = await createTask(deps.db, input, user);
-        await publishCardEvents(deps, BoardEventType.CARD_CREATED, task);
+        await publishCardEvents(deps, BoardEventType.CARD_CREATED, task, boardEventSource(user, input.clientMutationId));
         return task;
       },
       updateTask: async (
@@ -226,8 +341,12 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         { id, input, expectedVersion }: { id: string; input: UpdateTaskInput; expectedVersion?: number | null },
         context: GraphQLContext,
       ) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        const boardId = await boardIdForTask(deps.db, id);
+        if (!boardId) {
+          throw new GraphQLError('Task not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const result = await updateTask(deps.db, id, input, expectedVersion, user);
         if (result.conflict) {
           return { success: false, conflict: true, task: result.task };
@@ -243,8 +362,8 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         return { success: Boolean(result.task), conflict: false, task: result.task };
       },
       moveTask: async (_: unknown, { input }: { input: MoveTaskInput }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        await requireBoardRole(deps.db, input.boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const result = await moveTask(deps.db, input, user);
         if (result.conflict) {
           return { success: false, conflict: true, task: result.task };
@@ -259,9 +378,13 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         { id, expectedVersion }: { id: string; expectedVersion?: number | null },
         context: GraphQLContext,
       ) => {
-        requireUser(context);
-        ensureMutationAllowed();
-        const result = await deleteTask(deps.db, id, expectedVersion);
+        const boardId = await boardIdForTask(deps.db, id);
+        if (!boardId) {
+          throw new GraphQLError('Task not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
+        const result = await updateTask(deps.db, id, { archived: true }, expectedVersion, user);
         if (result.conflict) {
           return { success: false, conflict: true, task: result.task };
         }
@@ -271,64 +394,95 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         return { success: Boolean(result.task), conflict: false, task: result.task };
       },
       createLabel: async (_: unknown, { boardId, name, color }: { boardId: string; name?: string | null; color: string }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const label = await createLabel(deps.db, boardId, name, color, user);
-        await deps.publishBoardEvent({ type: BoardEventType.LABEL_UPDATED, boardId, label });
+        await deps.publishBoardEvent({ type: BoardEventType.LABEL_UPDATED, boardId, label, ...boardEventSource(user) });
         return label;
       },
       setTaskLabels: async (_: unknown, { taskId, labelIds }: { taskId: string; labelIds: string[] }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        const boardId = await boardIdForTask(deps.db, taskId);
+        if (!boardId) {
+          throw new GraphQLError('Task not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const task = await setTaskLabels(deps.db, taskId, labelIds, user);
         if (task) {
           await publishCardEvents(deps, BoardEventType.LABEL_UPDATED, task);
         }
         return task;
       },
-      createChecklistItem: async (_: unknown, { taskId, text }: { taskId: string; text: string }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
-        const item = await createChecklistItem(deps.db, taskId, text, user);
-        const task = await getTask(deps.db, taskId);
-        if (task) {
-          await deps.publishBoardEvent({ type: BoardEventType.CHECKLIST_UPDATED, boardId: task.boardId, task, checklistItem: item });
+      createChecklistItem: async (
+        _: unknown,
+        { taskId, text, clientMutationId }: { taskId: string; text: string; clientMutationId?: string | null },
+        context: GraphQLContext,
+      ) => {
+        const boardId = await boardIdForTask(deps.db, taskId);
+        if (!boardId) {
+          throw new GraphQLError('Task not found.', { extensions: { code: 'NOT_FOUND' } });
         }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
+        const item = await createChecklistItem(deps.db, taskId, text, user);
+        await deps.publishBoardEvent({
+          type: BoardEventType.CHECKLIST_UPDATED,
+          boardId,
+          checklistItem: item,
+          ...boardEventSource(user, clientMutationId),
+        });
         return item;
       },
       updateChecklistItem: async (_: unknown, { id, text, checked }: { id: string; text?: string | null; checked?: boolean | null }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
+        const boardIdQuery = await deps.db.query<{ board_id: string }>(
+          'SELECT t.board_id FROM checklist_items ci JOIN tasks t ON t.id = ci.task_id WHERE ci.id = $1',
+          [id],
+        );
+        const boardId = boardIdQuery.rows[0]?.board_id ?? null;
+        if (!boardId) {
+          throw new GraphQLError('Checklist item not found.', { extensions: { code: 'NOT_FOUND' } });
+        }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
         const item = await updateChecklistItem(deps.db, id, text, checked, user);
         if (item) {
-          const task = await getTask(deps.db, item.taskId);
-          if (task) {
-            await deps.publishBoardEvent({ type: BoardEventType.CHECKLIST_UPDATED, boardId: task.boardId, task, checklistItem: item });
-          }
+          await deps.publishBoardEvent({
+            type: BoardEventType.CHECKLIST_UPDATED,
+            boardId,
+            checklistItem: item,
+            ...boardEventSource(user),
+          });
         }
         return item;
       },
       addComment: async (_: unknown, { taskId, body }: { taskId: string; body: string }, context: GraphQLContext) => {
-        const user = requireUser(context);
-        ensureMutationAllowed();
-        const comment = await addComment(deps.db, taskId, body, user);
-        const task = await getTask(deps.db, taskId);
-        if (task) {
-          await deps.publishBoardEvent({ type: BoardEventType.COMMENT_CREATED, boardId: task.boardId, task, comment });
+        const boardId = await boardIdForTask(deps.db, taskId);
+        if (!boardId) {
+          throw new GraphQLError('Task not found.', { extensions: { code: 'NOT_FOUND' } });
         }
+        await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
+        const user = profileActor(await requireProfile(deps.db, context));
+        const comment = await addComment(deps.db, taskId, body, user);
+        await deps.publishBoardEvent({
+          type: BoardEventType.COMMENT_CREATED,
+          boardId,
+          comment,
+          ...boardEventSource(user),
+        });
         return comment;
       },
     },
     Subscription: {
       taskChanged: {
-        subscribe: (_: unknown, __: unknown, context: GraphQLContext) => {
-          requireUser(context);
-          return deps.taskEvents.subscribeTasks();
+        subscribe: async (_: unknown, __: unknown, context: GraphQLContext) => {
+          const profile = await requireProfile(deps.db, context);
+          const boardIds = await listBoardIdsForUser(deps.db, profile.auth0Sub);
+          return filterTaskEventsForBoards(deps.taskEvents.subscribeTasks(), new Set(boardIds));
         },
       },
       boardChanged: {
-        subscribe: (_: unknown, { boardId }: { boardId: string }, context: GraphQLContext) => {
-          requireUser(context);
+        subscribe: async (_: unknown, { boardId }: { boardId: string }, context: GraphQLContext) => {
+          await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
           return deps.taskEvents.subscribeBoard(boardId);
         },
       },

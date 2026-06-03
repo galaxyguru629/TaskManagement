@@ -1,8 +1,9 @@
 import {
+  BoardInvitationsQuery,
   BoardChangedSubscription,
+  BoardMembersQuery,
   BoardEventType,
   BoardViewQuery,
-  TaskStatus,
 } from '../../../graphql/generated/graphql';
 
 export type BoardViewModel = NonNullable<BoardViewQuery['boardView']>;
@@ -12,8 +13,10 @@ export type BoardCardModel = BoardListModel['cards'][number];
 export type BoardLabelModel = BoardViewModel['labels'][number];
 export type BoardActivityModel = BoardViewModel['activity'][number];
 export type BoardEventModel = BoardChangedSubscription['boardChanged'];
+export type BoardMemberModel = BoardMembersQuery['boardMembers'][number];
+export type BoardInvitationModel = BoardInvitationsQuery['boardInvitations'][number];
 
-export { BoardEventType, TaskStatus };
+export { BoardEventType };
 
 export interface CardConflict {
   taskId: string;
@@ -27,7 +30,6 @@ export interface CardMoveRequest {
   fromListId: string;
   toListId: string;
   toIndex: number;
-  status: TaskStatus;
 }
 
 export interface ListMoveRequest {

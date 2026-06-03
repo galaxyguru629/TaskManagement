@@ -43,4 +43,6 @@ testem.log
 
 # System files
 .DS_Store
+.cursor/
 Thumbs.db
+AGENTS.md

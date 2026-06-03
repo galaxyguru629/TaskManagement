@@ -1,4 +1,4 @@
-import { BoardEventType, TaskStatus } from '../../../graphql/generated/graphql';
+import { BoardEventType } from '../../../graphql/generated/graphql';
 import {
   BoardCardModel,
   BoardEventModel,
@@ -11,6 +11,41 @@ type ListPayload = NonNullable<BoardEventModel['list']>;
 type LabelPayload = NonNullable<BoardEventModel['label']>;
 type CommentPayload = NonNullable<BoardEventModel['comment']>;
 type ChecklistPayload = NonNullable<BoardEventModel['checklistItem']>;
+
+export function shouldApplyTaskUpdate(existing: BoardCardModel | undefined, incoming: TaskPayload): boolean {
+  if (!existing) return true;
+  return incoming.version >= existing.version;
+}
+
+export function mergeBoardView(current: BoardViewModel, incoming: BoardViewModel): BoardViewModel {
+  if (current.board.id !== incoming.board.id) return incoming;
+
+  const mergedCards = new Map<string, BoardCardModel>();
+  for (const card of collectCards(current)) {
+    mergedCards.set(card.id, card);
+  }
+  for (const card of collectCards(incoming)) {
+    const existing = mergedCards.get(card.id);
+    mergedCards.set(card.id, existing ? mergeCard(card, existing) : card);
+  }
+
+  const lists = incoming.lists.map((list) => {
+    const currentList = current.lists.find((candidate) => candidate.id === list.id);
+    const incomingIds = new Set(list.cards.map((card) => card.id));
+    const tempCards =
+      currentList?.cards.filter((card) => card.id.startsWith('temp-') && !incomingIds.has(card.id)) ?? [];
+    const cards = [...list.cards.map((card) => mergedCards.get(card.id) ?? card), ...tempCards];
+    return { ...list, cards: sortCards(cards) };
+  });
+
+  return {
+    ...incoming,
+    board: incoming.board.version >= current.board.version ? incoming.board : current.board,
+    lists: sortLists(lists),
+    labels: incoming.labels.length >= current.labels.length ? incoming.labels : current.labels,
+    activity: current.activity.length >= incoming.activity.length ? current.activity : incoming.activity,
+  };
+}
 
 export function applyBoardEvent(view: BoardViewModel | null, event: BoardEventModel): BoardViewModel | null {
   if (!view || event.boardId !== view.board.id) return view;
@@ -52,9 +87,8 @@ export function taskToCard(task: TaskPayload, existing?: BoardCardModel): BoardC
     listId: task.listId,
     title: task.title,
     description: task.description ?? null,
-    status: task.status,
     priority: task.priority,
-    assignee: task.assignee ?? null,
+    assignees: task.assignees ?? [],
     position: task.position,
     dueDate: task.dueDate ?? null,
     coverColor: task.coverColor ?? null,
@@ -74,7 +108,6 @@ export function applyListCreated(view: BoardViewModel, list: ListPayload): Board
     id: list.id,
     boardId: list.boardId,
     title: list.title,
-    status: list.status ?? null,
     position: list.position,
     archived: list.archived,
     version: list.version,
@@ -94,7 +127,6 @@ export function applyListUpdated(view: BoardViewModel, list: ListPayload): Board
           ? {
               ...candidate,
               title: list.title,
-              status: list.status ?? candidate.status,
               position: list.position,
               archived: list.archived,
               version: list.version,
@@ -112,12 +144,18 @@ export function applyListArchived(view: BoardViewModel, listId: string): BoardVi
 
 export function applyCardCreated(view: BoardViewModel, task: TaskPayload): BoardViewModel {
   if (findCard(view, task.id)) return applyCardUpdated(view, task);
-  return patchListsForCard(view, task, (cards) => insertCardByPosition(cards, taskToCard(task)));
+  return patchListsForCard(view, task, (cards) =>
+    insertCardByPosition(
+      cards.filter((card) => !card.id.startsWith('temp-')),
+      taskToCard(task),
+    ),
+  );
 }
 
 export function applyCardUpdated(view: BoardViewModel, task: TaskPayload): BoardViewModel {
   const existing = findCard(view, task.id);
   if (!existing) return applyCardCreated(view, task);
+  if (!shouldApplyTaskUpdate(existing, task)) return view;
   const updated = taskToCard(task, existing);
   if (existing.listId !== task.listId) {
     return applyCardMoved(view, task);
@@ -127,6 +165,7 @@ export function applyCardUpdated(view: BoardViewModel, task: TaskPayload): Board
 
 export function applyCardMoved(view: BoardViewModel, task: TaskPayload): BoardViewModel {
   const existing = findCard(view, task.id);
+  if (existing && !shouldApplyTaskUpdate(existing, task)) return view;
   const card = taskToCard(task, existing ?? undefined);
   return {
     ...view,
@@ -156,8 +195,9 @@ export function applyCommentCreated(
   activity: BoardEventModel['activity'],
 ): BoardViewModel {
   let next = view;
-  if (comment && task?.id) {
-    next = patchCard(next, task.id, (card) => ({
+  const taskId = task?.id ?? comment?.taskId;
+  if (comment && taskId) {
+    next = patchCard(next, taskId, (card) => ({
       ...card,
       comments: card.comments.some((item) => item.id === comment.id) ? card.comments : [comment, ...card.comments],
     }));
@@ -210,29 +250,17 @@ export function applyLabelUpdated(
   return next;
 }
 
-export function reconcileCreatedCard(view: BoardViewModel, task: TaskPayload, tempListId?: string): BoardViewModel {
-  let tempId: string | null = null;
-  const lists = view.lists.map((list) => {
-    if (list.id !== task.listId) return list;
-    let replaced = false;
-    const cards = list.cards.map((card) => {
-      if (!replaced && card.id.startsWith('temp-')) {
-        replaced = true;
-        tempId = card.id;
-        return taskToCard(task, card);
-      }
-      return card;
-    });
-    if (!replaced && !cards.some((card) => card.id === task.id)) {
-      return { ...list, cards: insertCardByPosition(cards, taskToCard(task)) };
-    }
-    return { ...list, cards: sortCards(cards) };
+export function reconcileCreatedCard(view: BoardViewModel, task: TaskPayload): BoardViewModel {
+  const existing = findCard(view, task.id);
+  return patchListsForCard(view, task, (cards) => {
+    const withoutOptimistic = cards.filter((card) => !card.id.startsWith('temp-') && card.id !== task.id);
+    return insertCardByPosition(withoutOptimistic, taskToCard(task, existing));
   });
-  return { ...view, lists };
 }
 
 export function reconcileTask(view: BoardViewModel, task: TaskPayload): BoardViewModel {
   const existing = findCard(view, task.id);
+  if (existing && !shouldApplyTaskUpdate(existing, task)) return view;
   if (!existing) return applyCardCreated(view, task);
   if (existing.listId !== task.listId) return applyCardMoved(view, task);
   return applyCardUpdated(view, task);
@@ -245,10 +273,44 @@ export function applyChecklistItem(view: BoardViewModel, item: ChecklistPayload)
   }));
 }
 
+export function replaceChecklistTempId(
+  view: BoardViewModel,
+  taskId: string,
+  tempId: string,
+  item: ChecklistPayload,
+): BoardViewModel {
+  return patchCard(view, taskId, (card) => ({
+    ...card,
+    checklist: upsertChecklistItem(
+      card.checklist.filter((entry) => entry.id !== tempId),
+      item,
+    ),
+  }));
+}
+
+export function removeChecklistItem(view: BoardViewModel, taskId: string, itemId: string): BoardViewModel {
+  return patchCard(view, taskId, (card) => ({
+    ...card,
+    checklist: card.checklist.filter((entry) => entry.id !== itemId),
+  }));
+}
+
 export function applyComment(view: BoardViewModel, comment: CommentPayload): BoardViewModel {
   return patchCard(view, comment.taskId, (card) => ({
     ...card,
     comments: card.comments.some((item) => item.id === comment.id) ? card.comments : [comment, ...card.comments],
+  }));
+}
+
+export function replaceCommentTempId(
+  view: BoardViewModel,
+  taskId: string,
+  tempId: string,
+  comment: CommentPayload,
+): BoardViewModel {
+  return patchCard(view, taskId, (card) => ({
+    ...card,
+    comments: [comment, ...card.comments.filter((entry) => entry.id !== tempId && entry.id !== comment.id)],
   }));
 }
 
@@ -311,6 +373,25 @@ function sortCards(cards: BoardCardModel[]): BoardCardModel[] {
   return [...cards].sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
 }
 
-export function defaultCardStatus(list: BoardListModel): TaskStatus {
-  return list.status ?? TaskStatus.Todo;
+function collectCards(view: BoardViewModel): BoardCardModel[] {
+  return view.lists.flatMap((list) => list.cards);
 }
+
+function mergeCard(incoming: BoardCardModel, existing: BoardCardModel): BoardCardModel {
+  if (existing.version > incoming.version) return existing;
+  if (incoming.version > existing.version) {
+    return {
+      ...incoming,
+      labels: incoming.labels.length ? incoming.labels : existing.labels,
+      checklist: existing.checklist.length > incoming.checklist.length ? existing.checklist : incoming.checklist,
+      comments: existing.comments.length > incoming.comments.length ? existing.comments : incoming.comments,
+    };
+  }
+  return {
+    ...incoming,
+    labels: incoming.labels.length ? incoming.labels : existing.labels,
+    checklist: existing.checklist.length >= incoming.checklist.length ? existing.checklist : incoming.checklist,
+    comments: existing.comments.length >= incoming.comments.length ? existing.comments : incoming.comments,
+  };
+}
+

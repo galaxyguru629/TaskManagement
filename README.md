@@ -114,6 +114,7 @@ Generated file: `src/environments/environment.config.ts` (do not edit by hand; r
 | `CORS_ORIGINS` | _(all)_ | Comma-separated frontend origins |
 | `AUTH0_DOMAIN` | _(required)_ | Auth0 tenant domain |
 | `AUTH0_AUDIENCE` | _(required)_ | Auth0 API audience |
+| `BLOB_READ_WRITE_TOKEN` | _(required for avatar upload)_ | Vercel Blob token used by API to store profile images |
 
 See `server/README.md` for the GraphQL API contract.
 

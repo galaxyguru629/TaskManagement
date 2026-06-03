@@ -1,0 +1,70 @@
+<div class="members-multi" #menuRoot (click)="keepMenuOpen($event)">
+  <div class="member-stack" role="list" aria-label="Card members">
+    @for (member of selectedMembers(); track member.auth0Sub) {
+      <button
+        type="button"
+        class="member-avatar-btn"
+        [attr.aria-label]="'Remove ' + label(member)"
+        (click)="toggleMember(member.auth0Sub, $event)"
+      >
+        <span class="member-avatar" [title]="label(member)">
+          @if (member.pictureUrl) {
+            <img [src]="member.pictureUrl" [alt]="label(member)" />
+          } @else {
+            {{ initials(member) }}
+          }
+        </span>
+      </button>
+    }
+    <button
+      type="button"
+      class="member-add"
+      [attr.aria-expanded]="menuOpen()"
+      aria-label="Add members"
+      (click)="toggleMenu($event)"
+    >
+      +
+    </button>
+  </div>
+
+  @if (menuOpen()) {
+    <div class="member-menu" (click)="keepMenuOpen($event)">
+      <input
+        type="text"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        (click)="keepMenuOpen($event)"
+        placeholder="Search members..."
+      />
+      <div class="member-options">
+        @for (member of filteredMembers(); track member.auth0Sub) {
+          <button
+            type="button"
+            class="member-option"
+            [class.selected]="isSelected(member.auth0Sub)"
+            (click)="toggleMember(member.auth0Sub, $event)"
+          >
+            <span class="member-avatar">
+              @if (member.pictureUrl) {
+                <img [src]="member.pictureUrl" [alt]="label(member)" />
+              } @else {
+                {{ initials(member) }}
+              }
+            </span>
+            <span class="member-meta">
+              <strong>{{ label(member) }}</strong>
+              @if (member.displayName && member.email) {
+                <small>{{ member.email }}</small>
+              }
+            </span>
+            @if (isSelected(member.auth0Sub)) {
+              <span class="check" aria-hidden="true">✓</span>
+            }
+          </button>
+        } @empty {
+          <p class="member-empty">No board members match your search.</p>
+        }
+      </div>
+    </div>
+  }
+</div>

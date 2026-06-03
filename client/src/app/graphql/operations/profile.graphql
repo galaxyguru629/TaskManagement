@@ -1,0 +1,22 @@
+fragment UserProfileFields on UserProfile {
+  auth0Sub
+  displayName
+  email
+  pictureUrl
+  isOnboarded
+  lastSeenAt
+  createdAt
+  updatedAt
+}
+
+query Me {
+  me {
+    ...UserProfileFields
+  }
+}
+
+mutation UpdateMyProfile($input: UpdateMyProfileInput!) {
+  updateMyProfile(input: $input) {
+    ...UserProfileFields
+  }
+}

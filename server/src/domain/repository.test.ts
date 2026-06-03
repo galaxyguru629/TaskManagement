@@ -4,13 +4,15 @@ import test from 'node:test';
 import type { Pool } from 'pg';
 import { DataType, newDb } from 'pg-mem';
 import type { AuthUser } from '../auth/auth.js';
-import { SortDirection, TaskStatus } from '../types.js';
+import { SortDirection } from '../types.js';
 import { createTask, deleteTask, listTasks, updateTask } from './repository.js';
 
 const user: AuthUser = {
   id: 'auth0|test-user',
   name: 'Test User',
   email: 'test@example.com',
+  pictureUrl: null,
+  emailVerified: true,
 };
 
 async function createTestPool(): Promise<Pool> {
@@ -29,6 +31,8 @@ async function createTestPool(): Promise<Pool> {
       title text NOT NULL,
       description text,
       background text NOT NULL DEFAULT 'linear-gradient(135deg, #0c66e4 0%, #5e4db2 100%)',
+      logo_url text,
+      created_by_auth0_sub text NOT NULL DEFAULT 'system',
       version integer NOT NULL DEFAULT 1,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
@@ -38,7 +42,6 @@ async function createTestPool(): Promise<Pool> {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       board_id uuid NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
       title text NOT NULL,
-      status text CHECK (status IN ('TODO', 'IN_PROGRESS', 'DONE')),
       position numeric NOT NULL DEFAULT 0,
       archived boolean NOT NULL DEFAULT false,
       version integer NOT NULL DEFAULT 1,
@@ -52,7 +55,6 @@ async function createTestPool(): Promise<Pool> {
       list_id uuid NOT NULL REFERENCES task_lists(id) ON DELETE SET NULL,
       title text NOT NULL,
       description text,
-      status text NOT NULL CHECK (status IN ('TODO', 'IN_PROGRESS', 'DONE')),
       priority integer NOT NULL CHECK (priority BETWEEN 1 AND 5),
       assignee text,
       position numeric NOT NULL DEFAULT 0,
@@ -63,6 +65,12 @@ async function createTestPool(): Promise<Pool> {
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
       updated_by text NOT NULL
+    );
+    CREATE TABLE task_assignees (
+      task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      auth0_sub text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (task_id, auth0_sub)
     );
     CREATE TABLE labels (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -100,12 +108,30 @@ async function createTestPool(): Promise<Pool> {
       actor text NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE user_profiles (
+      auth0_sub text PRIMARY KEY,
+      display_name text NOT NULL,
+      email text,
+      picture_url text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE board_members (
+      board_id uuid NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+      auth0_sub text NOT NULL,
+      role text NOT NULL CHECK (role IN ('OWNER', 'ADMIN', 'MEMBER')),
+      invited_by text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (board_id, auth0_sub)
+    );
     INSERT INTO boards (id, title, updated_by) VALUES ('00000000-0000-4000-8000-000000000001', 'Test Board', 'system');
-    INSERT INTO task_lists (id, board_id, title, status, position, updated_by)
+    INSERT INTO board_members (board_id, auth0_sub, role, invited_by)
+    VALUES ('00000000-0000-4000-8000-000000000001', 'auth0|test-user', 'OWNER', 'auth0|test-user');
+    INSERT INTO task_lists (id, board_id, title, position, updated_by)
     VALUES
-      ('00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000001', 'To Do', 'TODO', 1024, 'system'),
-      ('00000000-0000-4000-8000-000000000102', '00000000-0000-4000-8000-000000000001', 'In Progress', 'IN_PROGRESS', 2048, 'system'),
-      ('00000000-0000-4000-8000-000000000103', '00000000-0000-4000-8000-000000000001', 'Done', 'DONE', 3072, 'system');
+      ('00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000001', 'To Do', 1024, 'system'),
+      ('00000000-0000-4000-8000-000000000102', '00000000-0000-4000-8000-000000000001', 'In Progress', 2048, 'system'),
+      ('00000000-0000-4000-8000-000000000103', '00000000-0000-4000-8000-000000000001', 'Done', 3072, 'system');
   `);
   return pool;
 }
@@ -118,16 +144,15 @@ test('createTask validates and normalizes task input', async () => {
     {
       title: '  Build API  ',
       description: '  Use Postgres  ',
-      status: TaskStatus.IN_PROGRESS,
       priority: 3,
-      assignee: '  Ana  ',
+      assignees: [`  ${user.id}  `],
     },
     user,
   );
 
   assert.equal(task.title, 'Build API');
   assert.equal(task.description, 'Use Postgres');
-  assert.equal(task.assignee, 'Ana');
+  assert.deepEqual(task.assignees, [user.id]);
   assert.equal(task.boardId, '00000000-0000-4000-8000-000000000001');
   assert.equal(task.version, 1);
 
@@ -172,15 +197,21 @@ test('deleteTask supports successful deletes and version conflicts', async () =>
 
 test('listTasks applies pagination, filtering, and multi-column sorting', async () => {
   const pool = await createTestPool();
-  await createTask(pool, { title: 'Beta', status: TaskStatus.TODO, priority: 3, assignee: 'Lee' }, user);
-  await createTask(pool, { title: 'Alpha', status: TaskStatus.TODO, priority: 1, assignee: 'Lee' }, user);
-  await createTask(pool, { title: 'Done', status: TaskStatus.DONE, priority: 1, assignee: 'Kim' }, user);
+  await pool.query(
+    `INSERT INTO board_members (board_id, auth0_sub, role, invited_by) VALUES
+      ('00000000-0000-4000-8000-000000000001', 'Lee', 'MEMBER', $1),
+      ('00000000-0000-4000-8000-000000000001', 'Kim', 'MEMBER', $1)`,
+    [user.id],
+  );
+  await createTask(pool, { title: 'Beta', priority: 3, assignees: ['Lee'] }, user);
+  await createTask(pool, { title: 'Alpha', priority: 1, assignees: ['Lee'] }, user);
+  await createTask(pool, { title: 'Done', priority: 1, assignees: ['Kim'] }, user);
 
   const result = await listTasks(
     pool,
     1,
     1,
-    { status: TaskStatus.TODO, search: 'Lee' },
+    { search: 'Lee' },
     [
       { field: 'priority', direction: SortDirection.ASC },
       { field: 'title', direction: SortDirection.ASC },

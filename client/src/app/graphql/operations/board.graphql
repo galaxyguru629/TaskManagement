@@ -3,6 +3,8 @@ fragment BoardFields on Board {
   title
   description
   background
+  logoUrl
+  createdByAuth0Sub
   version
   createdAt
   updatedAt
@@ -13,6 +15,39 @@ fragment LabelFields on Label {
   boardId
   name
   color
+}
+
+fragment BoardMemberFields on BoardMember {
+  boardId
+  auth0Sub
+  role
+  displayName
+  email
+  pictureUrl
+  invitedBy
+  createdAt
+}
+
+fragment BoardInvitationFields on BoardInvitation {
+  id
+  boardId
+  boardTitle
+  boardBackground
+  email
+  role
+  status
+  invitedBy
+  acceptedBy
+  expiresAt
+  createdAt
+  updatedAt
+}
+
+fragment InviteUserFields on UserProfile {
+  auth0Sub
+  displayName
+  email
+  pictureUrl
 }
 
 fragment ChecklistItemFields on ChecklistItem {
@@ -46,9 +81,8 @@ fragment CardFields on BoardCard {
   listId
   title
   description
-  status
   priority
-  assignee
+  assignees
   position
   dueDate
   coverColor
@@ -72,9 +106,8 @@ fragment TaskFields on Task {
   listId
   title
   description
-  status
   priority
-  assignee
+  assignees
   position
   dueDate
   coverColor
@@ -87,7 +120,6 @@ fragment ListFields on BoardList {
   id
   boardId
   title
-  status
   position
   archived
   version
@@ -107,6 +139,30 @@ query DefaultBoard {
 query Boards {
   boards {
     ...BoardFields
+  }
+}
+
+query BoardMembers($boardId: ID!) {
+  boardMembers(boardId: $boardId) {
+    ...BoardMemberFields
+  }
+}
+
+query BoardInvitations($boardId: ID!) {
+  boardInvitations(boardId: $boardId) {
+    ...BoardInvitationFields
+  }
+}
+
+query ProjectUsers($boardId: ID!) {
+  projectUsers(boardId: $boardId) {
+    ...InviteUserFields
+  }
+}
+
+query MyInvitations {
+  myInvitations {
+    ...BoardInvitationFields
   }
 }
 
@@ -132,12 +188,35 @@ mutation CreateList($input: CreateListInput!) {
     id
     boardId
     title
-    status
     position
     archived
     version
     createdAt
     updatedAt
+  }
+}
+
+mutation CreateBoard($input: CreateBoardInput!) {
+  createBoard(input: $input) {
+    ...BoardFields
+  }
+}
+
+mutation InviteMember($input: InviteMemberInput!) {
+  inviteMember(input: $input) {
+    ...BoardInvitationFields
+  }
+}
+
+mutation AcceptInvitation($id: ID!) {
+  acceptInvitation(id: $id) {
+    ...BoardInvitationFields
+  }
+}
+
+mutation DeclineInvitation($id: ID!) {
+  declineInvitation(id: $id) {
+    ...BoardInvitationFields
   }
 }
 
@@ -149,7 +228,6 @@ mutation UpdateList($id: ID!, $input: UpdateListInput!, $expectedVersion: Int) {
       id
       boardId
       title
-      status
       position
       archived
       version
@@ -207,8 +285,8 @@ mutation SetTaskLabels($taskId: ID!, $labelIds: [ID!]!) {
   }
 }
 
-mutation CreateChecklistItem($taskId: ID!, $text: String!) {
-  createChecklistItem(taskId: $taskId, text: $text) {
+mutation CreateChecklistItem($taskId: ID!, $text: String!, $clientMutationId: String) {
+  createChecklistItem(taskId: $taskId, text: $text, clientMutationId: $clientMutationId) {
     ...ChecklistItemFields
   }
 }
@@ -225,10 +303,6 @@ mutation AddComment($taskId: ID!, $body: String!) {
   }
 }
 
-mutation SimulateNetworkFailure {
-  simulateNetworkFailure
-}
-
 subscription BoardChanged($boardId: ID!) {
   boardChanged(boardId: $boardId) {
     type
@@ -243,7 +317,6 @@ subscription BoardChanged($boardId: ID!) {
       id
       boardId
       title
-      status
       position
       archived
       version

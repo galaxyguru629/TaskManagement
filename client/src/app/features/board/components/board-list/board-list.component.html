@@ -21,6 +21,7 @@
         cdkDrag
         [cdkDragData]="card"
         [card]="card"
+        [members]="members()"
         [conflicted]="conflictIds().has(card.id)"
         (open)="openCard.emit($event)"
         (archive)="archiveCard.emit($event)"

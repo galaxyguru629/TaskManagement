@@ -1,0 +1,141 @@
+.members-multi {
+  position: relative;
+}
+
+.member-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.member-avatar-btn,
+.member-add {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  border: 2px solid var(--surface-canvas);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-avatar-btn:hover .member-avatar {
+  filter: brightness(1.08);
+}
+
+.member-add {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-interactive);
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  border: 1px dashed var(--border-strong);
+}
+
+.member-add:hover {
+  background: var(--surface-panel);
+  color: var(--text);
+}
+
+.member-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 320;
+  width: min(300px, 80vw);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-modal);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.member-menu input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2);
+  background: var(--surface-interactive);
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+.member-options {
+  max-height: 240px;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.member-option {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.member-option:hover,
+.member-option.selected {
+  background: var(--surface-interactive);
+}
+
+.member-meta {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.member-meta strong,
+.member-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-meta small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.check {
+  color: var(--accent);
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.member-empty {
+  margin: 0;
+  padding: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}

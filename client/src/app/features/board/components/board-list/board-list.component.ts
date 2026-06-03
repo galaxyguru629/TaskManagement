@@ -1,6 +1,6 @@
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import { BoardCardModel, BoardListModel, CardConflict } from '../../models/board.types';
+import { BoardCardModel, BoardListModel, BoardMemberModel, CardConflict } from '../../models/board.types';
 import { CardComponent } from '../card/card.component';
 import { CardComposerComponent } from '../card-composer/card-composer.component';
 
@@ -16,6 +16,7 @@ export class BoardListComponent {
   readonly list = input.required<BoardListModel>();
   readonly connectedTo = input<string[]>([]);
   readonly conflicts = input<CardConflict[]>([]);
+  readonly members = input<BoardMemberModel[]>([]);
 
   readonly createCard = output<{ list: BoardListModel; title: string }>();
   readonly cardDropped = output<CdkDragDrop<BoardCardModel[]>>();

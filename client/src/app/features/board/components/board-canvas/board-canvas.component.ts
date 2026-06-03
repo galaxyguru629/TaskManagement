@@ -1,7 +1,7 @@
 import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { BoardCardModel, BoardListModel, CardConflict, CardMoveRequest, ListMoveRequest, TaskStatus } from '../../models/board.types';
+import { BoardCardModel, BoardListModel, BoardMemberModel, CardConflict, CardMoveRequest, ListMoveRequest } from '../../models/board.types';
 import { BoardListComponent } from '../board-list/board-list.component';
 
 @Component({
@@ -16,6 +16,7 @@ export class BoardCanvasComponent {
   readonly lists = input.required<BoardListModel[]>();
   readonly loading = input(false);
   readonly conflicts = input<CardConflict[]>([]);
+  readonly members = input<BoardMemberModel[]>([]);
 
   readonly createList = output<string>();
   readonly createCard = output<{ list: BoardListModel; title: string }>();
@@ -46,7 +47,6 @@ export class BoardCanvasComponent {
       fromListId: event.previousContainer.id,
       toListId: event.container.id,
       toIndex: event.currentIndex,
-      status: target.status ?? this.statusForList(target),
     });
   }
 
@@ -54,12 +54,5 @@ export class BoardCanvasComponent {
     const list = event.item.data as BoardListModel;
     if (!list || event.previousIndex === event.currentIndex) return;
     this.moveList.emit({ list, fromIndex: event.previousIndex, toIndex: event.currentIndex });
-  }
-
-  private statusForList(list: BoardListModel): TaskStatus {
-    const lower = list.title.toLowerCase();
-    if (lower.includes('done')) return TaskStatus.Done;
-    if (lower.includes('progress')) return TaskStatus.InProgress;
-    return TaskStatus.Todo;
   }
 }

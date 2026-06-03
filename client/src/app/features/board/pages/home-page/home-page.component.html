@@ -1,0 +1,106 @@
+<main class="home-page">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Home</p>
+      <h1>Your boards</h1>
+      <p class="hero-subtitle">Boards you own and boards you joined through invitations.</p>
+    </div>
+    <div class="create-board">
+      <h2>Start a new board</h2>
+      <p>Create a board with optional logo image and invite teammates in seconds.</p>
+      <button type="button" (click)="goToCreateBoard()">Create board</button>
+    </div>
+  </section>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  @if (showSkeleton()) {
+    @if (loading()) {
+      <section class="board-section">
+        <header class="section-heading">
+          <div class="ui-skeleton skeleton-heading"></div>
+        </header>
+        <div class="board-grid">
+          @for (item of skeletonBoards; track item) {
+            <div class="board-card-skeleton ui-skeleton"></div>
+          }
+        </div>
+      </section>
+
+      <section class="board-section">
+        <header class="section-heading">
+          <div class="ui-skeleton skeleton-heading"></div>
+        </header>
+        <div class="board-grid">
+          @for (item of skeletonBoards; track item) {
+            <div class="board-card-skeleton ui-skeleton"></div>
+          }
+        </div>
+      </section>
+    } @else {
+      <section class="board-section">
+        <header class="section-heading">
+          <h2>Owned boards</h2>
+        </header>
+        <div class="board-grid">
+          @for (board of ownedBoards(); track board.id) {
+            <button type="button" class="board-card" [style.background]="board.background" (click)="openBoard(board.id)">
+              @if (board.logoUrl) {
+                <img class="board-logo" [src]="board.logoUrl" [alt]="board.title + ' logo'" />
+              }
+              <strong>{{ board.title }}</strong>
+              <span>{{ board.description || 'No description' }}</span>
+            </button>
+          } @empty {
+            <p class="empty">You have not created any boards yet.</p>
+          }
+        </div>
+      </section>
+
+      <section class="board-section">
+        <header class="section-heading">
+          <h2>Invited boards</h2>
+        </header>
+        <div class="board-grid">
+          @for (board of invitedBoards(); track board.id) {
+            <button type="button" class="board-card" [style.background]="board.background" (click)="openBoard(board.id)">
+              @if (board.logoUrl) {
+                <img class="board-logo" [src]="board.logoUrl" [alt]="board.title + ' logo'" />
+              }
+              <strong>{{ board.title }}</strong>
+              <span>{{ board.description || 'No description' }}</span>
+            </button>
+          } @empty {
+            <p class="empty">You have not joined other boards yet.</p>
+          }
+        </div>
+      </section>
+
+      <section class="board-section">
+        <header class="section-heading">
+          <h2>Pending invitations</h2>
+        </header>
+        @if (pendingInvitations().length) {
+          <div class="invites">
+            @for (invitation of pendingInvitations(); track invitation.id) {
+              <article class="invite-card">
+                <div>
+                  <strong>{{ invitation.boardTitle }}</strong>
+                  <p>{{ invitation.email }} as {{ invitation.role }}</p>
+                </div>
+                <div class="actions">
+                  <button type="button" (click)="acceptInvitation(invitation.id)">Accept</button>
+                  <button type="button" class="secondary" (click)="declineInvitation(invitation.id)">Decline</button>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="empty">No pending invitations.</p>
+        }
+      </section>
+    }
+  }
+</main>

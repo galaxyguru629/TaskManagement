@@ -98,4 +98,5 @@ export const env = {
   auth0Domain,
   auth0Audience,
   auth0Issuer: `https://${auth0Domain.replace(/^https?:\/\//, '').replace(/\/$/, '')}/`,
+  blobReadWriteToken: layeredEnv.BLOB_READ_WRITE_TOKEN?.trim() || null,
 } as const;

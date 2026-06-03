@@ -1,0 +1,53 @@
+<div class="member-picker" #menuRoot (click)="keepMenuOpen($event)">
+  <button type="button" class="member-picker-trigger" [attr.aria-expanded]="menuOpen()" (click)="toggleMenu($event)">
+    @if (selectedMember(); as member) {
+      <span class="member-avatar">
+        @if (member.pictureUrl) {
+          <img [src]="member.pictureUrl" [alt]="label(member)" />
+        } @else {
+          {{ initials(member) }}
+        }
+      </span>
+      <span class="member-label">{{ label(member) }}</span>
+    } @else {
+      <span class="member-label muted">{{ placeholder() }}</span>
+    }
+  </button>
+
+  @if (menuOpen()) {
+    <div class="member-picker-menu" (click)="keepMenuOpen($event)">
+      <input
+        type="text"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        (click)="keepMenuOpen($event)"
+        placeholder="Search members..."
+      />
+      <div class="member-options">
+        <button type="button" class="member-option" (click)="selectMember(null, $event)">
+          <span class="member-avatar muted">—</span>
+          <span class="member-label">Unassigned</span>
+        </button>
+        @for (member of filteredMembers(); track member.auth0Sub) {
+          <button type="button" class="member-option" (click)="selectMember(member.auth0Sub, $event)">
+            <span class="member-avatar">
+              @if (member.pictureUrl) {
+                <img [src]="member.pictureUrl" [alt]="label(member)" />
+              } @else {
+                {{ initials(member) }}
+              }
+            </span>
+            <span class="member-meta">
+              <strong>{{ label(member) }}</strong>
+              @if (member.displayName && member.email) {
+                <small>{{ member.email }}</small>
+              }
+            </span>
+          </button>
+        } @empty {
+          <p class="member-empty">No board members match your search.</p>
+        }
+      </div>
+    </div>
+  }
+</div>

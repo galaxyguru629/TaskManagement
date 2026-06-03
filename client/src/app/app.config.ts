@@ -27,6 +27,7 @@ appConfig.providers.push(
     authorizationParams: {
       redirect_uri: environment.auth0.redirectUri,
       audience: environment.auth0.audience,
+      scope: 'openid profile email',
     },
     httpInterceptor: {
       allowedList: [`${environment.graphqlHttpUri}/*`],

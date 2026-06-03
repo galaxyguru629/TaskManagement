@@ -2,11 +2,16 @@
   <app-board-header
     [board]="facade.board()"
     [loading]="facade.loading()"
-    (simulateFailure)="facade.simulateFailure()"
+    [members]="facade.members()"
+    [inviteContacts]="facade.inviteContacts()"
+    [invitations]="facade.invitations()"
+    [canInvite]="facade.canInvite()"
+    (inviteMember)="facade.inviteMember($event.email, $event.role)"
   />
 
   <app-board-canvas
     [lists]="facade.lists()"
+    [members]="facade.members()"
     [loading]="facade.loading()"
     [conflicts]="facade.conflicts()"
     (createList)="facade.createList($event)"
@@ -19,14 +24,17 @@
 
   <app-card-detail-modal
     [card]="facade.selectedCard()"
+    [boardMembers]="facade.members()"
     [labels]="facade.view()?.labels ?? []"
     [activity]="facade.view()?.activity ?? []"
     [conflicts]="facade.conflicts()"
+    [checklistPending]="facade.checklistPending()"
+    [commentPending]="facade.commentPending()"
     (close)="facade.selectCard(null)"
     (saveCard)="facade.updateCard($event.card, $event.input)"
     (archiveCard)="facade.archiveCard($event)"
     (addChecklistItem)="facade.addChecklistItem($event.card, $event.text)"
-    (toggleChecklistItem)="facade.updateChecklistItem($event.id, $event.checked)"
+    (toggleChecklistItem)="facade.selectedCard() && facade.updateChecklistItem(facade.selectedCard()!, $event.id, $event.checked)"
     (addComment)="facade.addComment($event.card, $event.body)"
     (dismissConflict)="facade.dismissConflict($event)"
   />

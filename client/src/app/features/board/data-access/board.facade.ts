@@ -1,13 +1,36 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Apollo } from 'apollo-angular';
-import { map } from 'rxjs';
+import { map, finalize, firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../core/toast/toast.service';
 import {
   AddCommentDocument,
   BoardChangedDocument,
   BoardChangedSubscription,
   BoardChangedSubscriptionVariables,
+  BoardEventType,
+  BoardRole,
+  BoardInvitationFieldsFragment,
+  CreateBoardDocument,
+  CreateBoardMutation,
+  CreateBoardMutationVariables,
+  BoardMembersDocument,
+  BoardMembersQuery,
+  BoardMembersQueryVariables,
+  InviteMemberDocument,
+  InviteMemberMutation,
+  InviteMemberMutationVariables,
+  MeDocument,
+  MeQuery,
+  AcceptInvitationDocument,
+  AcceptInvitationMutation,
+  AcceptInvitationMutationVariables,
+  DeclineInvitationDocument,
+  DeclineInvitationMutation,
+  DeclineInvitationMutationVariables,
+  BoardInvitationsDocument,
+  BoardInvitationsQuery,
+  BoardInvitationsQueryVariables,
   BoardViewDocument,
   BoardViewQuery,
   BoardViewQueryVariables,
@@ -28,8 +51,6 @@ import {
   MoveTaskDocument,
   MoveTaskMutation,
   MoveTaskMutationVariables,
-  SimulateNetworkFailureDocument,
-  TaskStatus,
   UpdateChecklistItemDocument,
   UpdateChecklistItemMutation,
   UpdateChecklistItemMutationVariables,
@@ -41,19 +62,32 @@ import {
   UpdateTaskMutationVariables,
   AddCommentMutation,
   AddCommentMutationVariables,
+  ProjectUsersDocument,
+  ProjectUsersQuery,
+  ProjectUsersQueryVariables,
 } from '../../../graphql/generated/graphql';
-import { BoardCardModel, BoardListModel, BoardViewModel, CardConflict, CardMoveRequest, ListMoveRequest } from '../models/board.types';
+import { BoardCardModel, BoardListModel, BoardMemberModel, BoardViewModel, CardConflict, CardMoveRequest, ListMoveRequest } from '../models/board.types';
 import {
   applyBoardEvent,
   applyChecklistItem,
   applyComment,
+  replaceChecklistTempId,
+  replaceCommentTempId,
   applyListCreated,
   applyListUpdated,
   reconcileCreatedCard,
   reconcileTask,
+  mergeBoardView,
 } from './board-sync';
 
-type CardUpdateInput = Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignee' | 'dueDate' | 'coverColor'>>;
+type CardUpdateInput = Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignees' | 'dueDate' | 'coverColor'>>;
+
+function assigneesEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  const a = [...left].sort();
+  const b = [...right].sort();
+  return a.every((value, index) => value === b[index]);
+}
 
 @Injectable()
 export class BoardFacade {
@@ -64,8 +98,15 @@ export class BoardFacade {
   readonly loading = signal(true);
   readonly boardId = signal<string | null>(null);
   readonly view = signal<BoardViewModel | null>(null);
+  readonly members = signal<BoardMemberModel[]>([]);
+  readonly invitations = signal<BoardInvitationFieldsFragment[]>([]);
+  readonly projectUsers = signal<ProjectUsersQuery['projectUsers']>([]);
+  readonly currentUserSub = signal<string | null>(null);
+  readonly currentUserEmail = signal<string | null>(null);
   readonly selectedCardId = signal<string | null>(null);
   readonly conflicts = signal<CardConflict[]>([]);
+  readonly checklistPending = signal(false);
+  readonly commentPending = signal(false);
 
   readonly board = computed(() => this.view()?.board ?? null);
   readonly lists = computed(() => this.view()?.lists ?? []);
@@ -74,12 +115,45 @@ export class BoardFacade {
     if (!id) return null;
     return this.lists().flatMap((list) => list.cards).find((card) => card.id === id) ?? null;
   });
+  readonly userRole = computed(() => {
+    const sub = this.currentUserSub();
+    if (!sub) return null;
+    return this.members().find((member) => member.auth0Sub === sub)?.role ?? null;
+  });
+  readonly canInvite = computed(() => {
+    const role = this.userRole();
+    return role === BoardRole.Owner || role === BoardRole.Admin;
+  });
+  readonly inviteContacts = computed(() => {
+    const currentEmail = this.currentUserEmail()?.toLowerCase() ?? '';
+    const contacts = new Map<string, { email: string; label: string; displayName: string | null; pictureUrl: string | null }>();
+    for (const user of this.projectUsers()) {
+      const email = user.email?.trim();
+      if (!email || email.toLowerCase() === currentEmail) continue;
+      const displayName = user.displayName?.trim() || null;
+      const label = displayName ? `${displayName} (${email})` : email;
+      contacts.set(email.toLowerCase(), { email, label, displayName, pictureUrl: user.pictureUrl ?? null });
+    }
+    for (const invitation of this.invitations()) {
+      const email = invitation.email?.trim();
+      if (!email || email.toLowerCase() === currentEmail) continue;
+      if (!contacts.has(email.toLowerCase())) {
+        contacts.set(email.toLowerCase(), { email, label: email, displayName: null, pictureUrl: null });
+      }
+    }
+    return [...contacts.values()].sort((a, b) => a.label.localeCompare(b.label));
+  });
 
   private subscriptionStartedFor: string | null = null;
   private readonly pendingMutationIds = new Set<string>();
   private readonly pendingTaskIds = new Set<string>();
 
-  init(): void {
+  init(boardId?: string | null): void {
+    this.loadCurrentUser();
+    if (boardId) {
+      this.openBoard(boardId);
+      return;
+    }
     this.apollo
       .query<DefaultBoardQuery>({ query: DefaultBoardDocument, fetchPolicy: 'network-only' })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -91,15 +165,95 @@ export class BoardFacade {
             this.toast.error('No board is available.');
             return;
           }
-          this.boardId.set(id);
-          this.watchBoard(id);
-          this.startSubscription(id);
+          this.openBoard(id);
         },
         error: () => {
           this.loading.set(false);
           this.toast.error('Unable to load the board.');
         },
       });
+  }
+
+  openBoard(boardId: string): void {
+    if (this.boardId() !== boardId) {
+      this.subscriptionStartedFor = null;
+    }
+    this.boardId.set(boardId);
+    this.loadBoard(boardId);
+    this.loadMembers(boardId);
+    this.loadProjectUsers(boardId);
+    this.startSubscription(boardId);
+  }
+
+  createBoard(title: string, description?: string | null, logoImageData?: string | null): Promise<string | null> {
+    const cleaned = title.trim();
+    if (!cleaned) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      this.apollo
+        .mutate<CreateBoardMutation, CreateBoardMutationVariables>({
+          mutation: CreateBoardDocument,
+          variables: { input: { title: cleaned, description: description?.trim() || null, logoImageData: logoImageData ?? null } },
+        })
+        .subscribe({
+          next: ({ data }) => resolve(data?.createBoard?.id ?? null),
+          error: () => {
+            this.toast.error('Board creation failed.');
+            resolve(null);
+          },
+        });
+    });
+  }
+
+  inviteMember(email: string, role: BoardRole): void {
+    const boardId = this.boardId();
+    const cleaned = email.trim();
+    if (!boardId || !cleaned || !this.canInvite()) return;
+    this.apollo
+      .mutate<InviteMemberMutation, InviteMemberMutationVariables>({
+        mutation: InviteMemberDocument,
+        variables: { input: { boardId, email: cleaned, role } },
+      })
+      .subscribe({
+        next: () => {
+          this.toast.success('Invitation sent.');
+          this.loadInvitations(boardId);
+        },
+        error: () => this.toast.error('Failed to send invitation.'),
+      });
+  }
+
+  acceptInvitation(id: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.apollo
+        .mutate<AcceptInvitationMutation, AcceptInvitationMutationVariables>({
+          mutation: AcceptInvitationDocument,
+          variables: { id },
+        })
+        .subscribe({
+          next: () => resolve(true),
+          error: () => {
+            this.toast.error('Could not accept invitation.');
+            resolve(false);
+          },
+        });
+    });
+  }
+
+  declineInvitation(id: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.apollo
+        .mutate<DeclineInvitationMutation, DeclineInvitationMutationVariables>({
+          mutation: DeclineInvitationDocument,
+          variables: { id },
+        })
+        .subscribe({
+          next: () => resolve(true),
+          error: () => {
+            this.toast.error('Could not decline invitation.');
+            resolve(false);
+          },
+        });
+    });
   }
 
   createList(title: string): void {
@@ -126,6 +280,7 @@ export class BoardFacade {
     const snapshot = this.view();
     const optimistic = this.addLocalCard(snapshot, list, cleaned);
     if (optimistic) this.view.set(optimistic);
+    const clientMutationId = this.trackMutation();
 
     this.apollo
       .mutate<CreateTaskMutation, CreateTaskMutationVariables>({
@@ -135,15 +290,18 @@ export class BoardFacade {
             boardId: list.boardId,
             listId: list.id,
             title: cleaned,
-            status: list.status ?? TaskStatus.Todo,
             priority: 2,
+            clientMutationId,
           },
         },
       })
+      .pipe(finalize(() => this.clearPendingMutation(clientMutationId)))
       .subscribe({
         next: ({ data }) => {
           const task = data?.createTask;
-          if (task) this.reconcileCreatedCardFromServer(task);
+          if (task) {
+            this.reconcileCreatedCardFromServer(task);
+          }
         },
         error: () => this.rollback(snapshot, 'Card creation failed.'),
       });
@@ -161,6 +319,7 @@ export class BoardFacade {
         mutation: UpdateTaskDocument,
         variables: { id: card.id, expectedVersion: card.version, input: { ...changed, clientMutationId } },
       })
+      .pipe(finalize(() => this.clearPendingMutation(clientMutationId, card.id)))
       .subscribe({
         next: ({ data }) => {
           if (data?.updateTask.conflict && data.updateTask.task) {
@@ -192,12 +351,12 @@ export class BoardFacade {
             taskId: request.task.id,
             toListId: request.toListId,
             position,
-            status: request.status,
             expectedVersion: request.task.version,
             clientMutationId,
           },
         },
       })
+      .pipe(finalize(() => this.clearPendingMutation(clientMutationId, request.task.id)))
       .subscribe({
         next: ({ data }) => {
           if (data?.moveTask.conflict && data.moveTask.task) {
@@ -230,6 +389,7 @@ export class BoardFacade {
           input: { position, clientMutationId },
         },
       })
+      .pipe(finalize(() => this.clearPendingMutation(clientMutationId)))
       .subscribe({
         next: ({ data }) => {
           if (data?.updateList.conflict) {
@@ -254,50 +414,109 @@ export class BoardFacade {
   }
 
   addChecklistItem(card: BoardCardModel, text: string): void {
-    if (!text.trim()) return;
+    const trimmed = text.trim();
+    if (!trimmed || this.checklistPending()) return;
+
+    const snapshot = this.view();
+    const tempId = `temp-checklist-${crypto.randomUUID()}`;
+    const maxPosition = card.checklist.reduce((max, item) => Math.max(max, item.position), 0);
+    const optimistic = {
+      __typename: 'ChecklistItem' as const,
+      id: tempId,
+      taskId: card.id,
+      text: trimmed,
+      checked: false,
+      position: maxPosition + 1024,
+    };
+
+    const clientMutationId = this.trackMutation(card.id);
+    const view = this.view();
+    if (view) this.view.set(applyChecklistItem(view, optimistic));
+    this.checklistPending.set(true);
+
     this.apollo
-      .mutate<CreateChecklistItemMutation, CreateChecklistItemMutationVariables>({ mutation: CreateChecklistItemDocument, variables: { taskId: card.id, text: text.trim() } })
+      .mutate<CreateChecklistItemMutation, CreateChecklistItemMutationVariables>({
+        mutation: CreateChecklistItemDocument,
+        variables: { taskId: card.id, text: trimmed, clientMutationId },
+      })
+      .pipe(finalize(() => this.clearPendingMutation(clientMutationId, card.id)))
       .subscribe({
         next: ({ data }) => {
           const item = data?.createChecklistItem;
-          const view = this.view();
-          if (item && view) this.view.set(applyChecklistItem(view, item));
+          const current = this.view();
+          if (item && current) {
+            this.view.set(replaceChecklistTempId(current, card.id, tempId, item));
+          }
+          this.checklistPending.set(false);
         },
-        error: () => this.toast.error('Checklist update failed.'),
+        error: () => {
+          if (snapshot) this.view.set(snapshot);
+          this.checklistPending.set(false);
+          this.toast.error('Checklist update failed.');
+        },
       });
   }
 
-  updateChecklistItem(id: string, checked: boolean): void {
+  updateChecklistItem(card: BoardCardModel, id: string, checked: boolean): void {
+    const snapshot = this.view();
+    const existing = card.checklist.find((item) => item.id === id);
+    if (!existing) return;
+
+    const optimistic = { ...existing, checked };
+    const view = this.view();
+    if (view) this.view.set(applyChecklistItem(view, optimistic));
+
     this.apollo
       .mutate<UpdateChecklistItemMutation, UpdateChecklistItemMutationVariables>({ mutation: UpdateChecklistItemDocument, variables: { id, checked } })
       .subscribe({
         next: ({ data }) => {
           const item = data?.updateChecklistItem;
-          const view = this.view();
-          if (item && view) this.view.set(applyChecklistItem(view, item));
+          const current = this.view();
+          if (item && current) this.view.set(applyChecklistItem(current, item));
         },
-        error: () => this.toast.error('Checklist update failed.'),
+        error: () => {
+          if (snapshot) this.view.set(snapshot);
+          this.toast.error('Checklist update failed.');
+        },
       });
   }
 
   addComment(card: BoardCardModel, body: string): void {
-    if (!body.trim()) return;
+    const trimmed = body.trim();
+    if (!trimmed || this.commentPending()) return;
+
+    const snapshot = this.view();
+    const tempId = `temp-comment-${crypto.randomUUID()}`;
+    const optimistic = {
+      __typename: 'TaskComment' as const,
+      id: tempId,
+      taskId: card.id,
+      body: trimmed,
+      author: 'You',
+      createdAt: new Date().toISOString(),
+    };
+
+    const view = this.view();
+    if (view) this.view.set(applyComment(view, optimistic));
+    this.commentPending.set(true);
+
     this.apollo
-      .mutate<AddCommentMutation, AddCommentMutationVariables>({ mutation: AddCommentDocument, variables: { taskId: card.id, body: body.trim() } })
+      .mutate<AddCommentMutation, AddCommentMutationVariables>({ mutation: AddCommentDocument, variables: { taskId: card.id, body: trimmed } })
       .subscribe({
         next: ({ data }) => {
           const comment = data?.addComment;
-          const view = this.view();
-          if (comment && view) this.view.set(applyComment(view, comment));
+          const current = this.view();
+          if (comment && current) {
+            this.view.set(replaceCommentTempId(current, card.id, tempId, comment));
+          }
+          this.commentPending.set(false);
         },
-        error: () => this.toast.error('Comment failed.'),
+        error: () => {
+          if (snapshot) this.view.set(snapshot);
+          this.commentPending.set(false);
+          this.toast.error('Comment failed.');
+        },
       });
-  }
-
-  simulateFailure(): void {
-    this.apollo.mutate({ mutation: SimulateNetworkFailureDocument }).subscribe({
-      next: () => this.toast.info('The next mutation will fail for rollback testing.'),
-    });
   }
 
   selectCard(id: string | null): void {
@@ -308,22 +527,94 @@ export class BoardFacade {
     this.conflicts.update((items) => items.filter((item) => item.taskId !== taskId));
   }
 
-  private watchBoard(boardId: string): void {
-    this.apollo
-      .watchQuery<BoardViewQuery, BoardViewQueryVariables>({
+  private loadBoard(boardId: string): void {
+    this.loading.set(true);
+    void firstValueFrom(
+      this.apollo.query<BoardViewQuery, BoardViewQueryVariables>({
         query: BoardViewDocument,
         variables: { boardId },
-        fetchPolicy: 'cache-and-network',
+        fetchPolicy: 'network-only',
+      }),
+    )
+      .then(({ data }) => {
+        if (this.boardId() !== boardId) return;
+        if (data.boardView) {
+          this.view.set(data.boardView);
+        }
+        this.loading.set(false);
       })
-      .valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .catch(() => {
+        if (this.boardId() !== boardId) return;
+        this.loading.set(false);
+        this.toast.error('Board refresh failed.');
+      });
+  }
+
+  private loadMembers(boardId: string): void {
+    this.apollo
+      .query<BoardMembersQuery, BoardMembersQueryVariables>({
+        query: BoardMembersDocument,
+        variables: { boardId },
+        fetchPolicy: 'network-only',
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ data, loading }) => {
-          this.loading.set(loading);
-          if (data.boardView) this.view.set(data.boardView);
+        next: ({ data }) => {
+          this.members.set(data.boardMembers ?? []);
+          if (this.canInvite()) this.loadInvitations(boardId);
         },
         error: () => {
-          this.loading.set(false);
-          this.toast.error('Board refresh failed.');
+          this.toast.warning('Could not load board members.', 'members:load');
+        },
+      });
+  }
+
+  private loadProjectUsers(boardId: string): void {
+    this.apollo
+      .query<ProjectUsersQuery, ProjectUsersQueryVariables>({
+        query: ProjectUsersDocument,
+        variables: { boardId },
+        fetchPolicy: 'network-only',
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ data }) => this.projectUsers.set(data.projectUsers ?? []),
+        error: () => this.projectUsers.set([]),
+      });
+  }
+
+  private loadInvitations(boardId: string): void {
+    this.apollo
+      .query<BoardInvitationsQuery, BoardInvitationsQueryVariables>({
+        query: BoardInvitationsDocument,
+        variables: { boardId },
+        fetchPolicy: 'network-only',
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ data }) => {
+          this.invitations.set(data.boardInvitations ?? []);
+        },
+        error: () => {
+          this.invitations.set([]);
+        },
+      });
+  }
+
+  private loadCurrentUser(): void {
+    this.apollo
+      .query<MeQuery>({ query: MeDocument, fetchPolicy: 'network-only' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ data }) => {
+          this.currentUserSub.set(data.me?.auth0Sub ?? null);
+          this.currentUserEmail.set(data.me?.email ?? null);
+          const boardId = this.boardId();
+          if (boardId && this.canInvite()) this.loadInvitations(boardId);
+        },
+        error: () => {
+          this.currentUserSub.set(null);
+          this.currentUserEmail.set(null);
         },
       });
   }
@@ -343,14 +634,18 @@ export class BoardFacade {
       .subscribe({
         next: (event) => {
           if (!event) return;
+          if (event.type === BoardEventType.BoardUpdated) {
+            const id = this.boardId();
+            if (id) {
+              this.loadMembers(id);
+              if (this.canInvite()) this.loadInvitations(id);
+            }
+          }
           const taskId = event.task?.id ?? null;
           if (event.clientMutationId && this.pendingMutationIds.has(event.clientMutationId)) {
-            this.pendingMutationIds.delete(event.clientMutationId);
-            if (taskId) this.pendingTaskIds.delete(taskId);
             return;
           }
-          if (taskId && this.pendingTaskIds.has(taskId)) {
-            this.pendingTaskIds.delete(taskId);
+          if (taskId && this.pendingTaskIds.has(taskId) && this.isCardSnapshotEvent(event.type)) {
             return;
           }
           const view = this.view();
@@ -373,7 +668,27 @@ export class BoardFacade {
   private refetchBoard(): void {
     const boardId = this.boardId();
     if (!boardId) return;
-    void this.apollo.client.refetchQueries({ include: [BoardViewDocument] });
+    if (this.pendingMutationIds.size > 0) return;
+
+    void firstValueFrom(
+      this.apollo.query<BoardViewQuery, BoardViewQueryVariables>({
+        query: BoardViewDocument,
+        variables: { boardId },
+        fetchPolicy: 'network-only',
+      }),
+    )
+      .then(({ data }) => {
+        if (this.boardId() !== boardId || !data.boardView) return;
+        const current = this.view();
+        if (current) {
+          this.view.set(mergeBoardView(current, data.boardView));
+        } else {
+          this.view.set(data.boardView);
+        }
+      })
+      .catch(() => {
+        this.toast.warning('Could not refresh board.', 'refetch:board');
+      });
   }
 
   private rollback(snapshot: BoardViewModel | null, message: string, key?: string): void {
@@ -424,11 +739,22 @@ export class BoardFacade {
     const id = crypto.randomUUID();
     this.pendingMutationIds.add(id);
     if (taskId) this.pendingTaskIds.add(taskId);
-    window.setTimeout(() => {
-      this.pendingMutationIds.delete(id);
-      if (taskId) this.pendingTaskIds.delete(taskId);
-    }, 15000);
     return id;
+  }
+
+  private clearPendingMutation(clientMutationId: string, taskId?: string): void {
+    this.pendingMutationIds.delete(clientMutationId);
+    if (taskId) this.pendingTaskIds.delete(taskId);
+  }
+
+  private isCardSnapshotEvent(type: BoardEventType): boolean {
+    return (
+      type === BoardEventType.CardCreated ||
+      type === BoardEventType.CardUpdated ||
+      type === BoardEventType.CardMoved ||
+      type === BoardEventType.CardArchived ||
+      type === BoardEventType.CardDeleted
+    );
   }
 
   private changedCardInput(card: BoardCardModel, input: CardUpdateInput): CardUpdateInput {
@@ -436,7 +762,9 @@ export class BoardFacade {
     if (input.title !== undefined && input.title !== card.title) changed.title = input.title;
     if (input.description !== undefined && input.description !== card.description) changed.description = input.description;
     if (input.priority !== undefined && Number(input.priority) !== card.priority) changed.priority = Number(input.priority);
-    if (input.assignee !== undefined && input.assignee !== card.assignee) changed.assignee = input.assignee;
+    if (input.assignees !== undefined && !assigneesEqual(input.assignees, card.assignees)) {
+      changed.assignees = input.assignees;
+    }
     if (input.dueDate !== undefined && input.dueDate !== card.dueDate) changed.dueDate = input.dueDate;
     if (input.coverColor !== undefined && input.coverColor !== card.coverColor) changed.coverColor = input.coverColor;
     return changed;
@@ -473,9 +801,8 @@ export class BoardFacade {
       listId: list.id,
       title,
       description: null,
-      status: list.status ?? TaskStatus.Todo,
       priority: 2,
-      assignee: null,
+      assignees: [],
       position: 0,
       dueDate: null,
       coverColor: null,
@@ -499,7 +826,6 @@ export class BoardFacade {
     const movedCard = {
       ...request.task,
       listId: request.toListId,
-      status: request.status,
       position,
       version: request.task.version + 1,
       updatedAt: new Date().toISOString(),

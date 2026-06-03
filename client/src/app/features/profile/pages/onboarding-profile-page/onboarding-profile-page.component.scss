@@ -1,0 +1,167 @@
+:host {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.profile-gate {
+  min-height: calc(100vh - 58px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at 15% 15%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 35%),
+    var(--surface-canvas);
+}
+
+.profile-panel {
+  width: min(460px, 100%);
+  display: grid;
+  gap: var(--space-4);
+  border-radius: var(--radius-4);
+  border: 1px solid var(--border);
+  background: var(--surface-panel);
+  color: var(--text);
+  box-shadow: var(--shadow-modal);
+  padding: 30px;
+}
+
+.eyebrow,
+h1,
+.intro,
+label,
+.field-error,
+.form-error {
+  margin: 0;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+.intro {
+  color: var(--text-subtle);
+  line-height: 22px;
+}
+
+form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+label {
+  color: var(--text-subtle);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--surface-panel);
+  color: var(--text);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-card);
+}
+
+.avatar-preview-card {
+  width: 96px;
+  height: 96px;
+  position: relative;
+}
+
+.upload-dropzone {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-2);
+  min-height: 82px;
+  background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
+  display: grid;
+  place-items: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.upload-dropzone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-dropzone span {
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+
+.remove-avatar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(8, 18, 34, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  padding: 6px 8px;
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.avatar-preview-card:hover .remove-avatar,
+.avatar-preview-card:focus-within .remove-avatar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.field-error,
+.form-error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+button {
+  border: 0;
+  border-radius: var(--radius-2);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  padding: 11px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--motion-fast), transform var(--motion-fast);
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:not(.secondary-button):hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}

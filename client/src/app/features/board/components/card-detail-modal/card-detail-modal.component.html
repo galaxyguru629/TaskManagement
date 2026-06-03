@@ -1,119 +1,222 @@
 @if (card(); as current) {
-  <div class="backdrop" (click)="close.emit()"></div>
-  <section class="modal" role="dialog" aria-modal="true" aria-label="Card details" (keydown.escape)="close.emit()">
-    <button type="button" class="close" aria-label="Close card" (click)="close.emit()">×</button>
+  <div class="modal-layer">
+    <div class="backdrop" (click)="close.emit()"></div>
+    <section class="modal" role="dialog" aria-modal="true" aria-label="Card details" (keydown.escape)="close.emit()">
+      @if (current.coverColor) {
+        <div class="cover" [style.background]="current.coverColor"></div>
+      }
 
-    @if (current.coverColor) {
-      <div class="cover" [style.background]="current.coverColor"></div>
-    }
+      <header class="modal-toolbar">
+        <div class="toolbar-spacer"></div>
+        <button type="button" class="close" aria-label="Close card" (click)="close.emit()">×</button>
+      </header>
 
-    @if (activeConflict(); as conflict) {
-      <div class="conflict">
-        <strong>Conflict detected</strong>
-        <span>Server version {{ conflict.remoteVersion }} is newer than your version {{ conflict.localVersion }}.</span>
-        <button type="button" (click)="dismissConflict.emit(conflict.taskId)">Dismiss</button>
-      </div>
-    }
-
-    <div class="content">
-      <main>
-        <input class="title" [ngModel]="title()" (ngModelChange)="title.set($event)" (blur)="save()" />
-
-        <section>
-          <h2>Description</h2>
-          <textarea
-            [ngModel]="description()"
-            (ngModelChange)="description.set($event)"
-            (blur)="save()"
-            placeholder="Add a more detailed description..."
-            rows="5"
-          ></textarea>
-        </section>
-
-        <section>
-          <h2>Checklist</h2>
-          <div class="checklist">
-            @for (item of current.checklist; track item.id) {
-              <label>
-                <input
-                  type="checkbox"
-                  [checked]="item.checked"
-                  (change)="toggleChecklistItem.emit({ id: item.id, checked: $any($event.target).checked })"
-                />
-                <span [class.done]="item.checked">{{ item.text }}</span>
-              </label>
-            }
-          </div>
-          <form class="inline-form" (ngSubmit)="submitChecklist()">
-            <input [ngModel]="checklistText()" name="checklistText" (ngModelChange)="checklistText.set($event)" placeholder="Add an item" />
-            <button type="submit">Add</button>
-          </form>
-        </section>
-
-        <section>
-          <h2>Comments</h2>
-          <form class="comment-form" (ngSubmit)="submitComment()">
-            <textarea [ngModel]="commentBody()" name="commentBody" (ngModelChange)="commentBody.set($event)" placeholder="Write a comment..." rows="3"></textarea>
-            <button type="submit">Save</button>
-          </form>
-          <div class="comments">
-            @for (comment of current.comments; track comment.id) {
-              <article>
-                <strong>{{ comment.author }}</strong>
-                <p>{{ comment.body }}</p>
-              </article>
-            }
-          </div>
-        </section>
-      </main>
-
-      <aside>
-        <h2>Card</h2>
-        <label>
-          Assignee
-          <input [ngModel]="assignee()" (ngModelChange)="assignee.set($event)" (blur)="save()" placeholder="Name or email" />
-        </label>
-        <label>
-          Due date
-          <input type="date" [ngModel]="dueDate()" (ngModelChange)="dueDate.set($event)" (blur)="save()" />
-        </label>
-        <label>
-          Priority
-          <input type="number" min="1" max="5" [ngModel]="priority()" (ngModelChange)="priority.set($event)" (blur)="save()" />
-        </label>
-        <label>
-          Cover color
-          <input
-            type="color"
-            [ngModel]="coverColor() || '#579dff'"
-            (input)="coverColor.set($any($event.target).value)"
-            (change)="commitCoverColor($any($event.target).value)"
-          />
-        </label>
-
-        @if (current.labels.length) {
-          <div class="modal-labels">
-            @for (label of current.labels; track label.id) {
-              <span [style.background]="label.color">{{ label.name || 'Label' }}</span>
-            }
-          </div>
-        }
-
-        <button type="button" class="danger" (click)="archiveCard.emit(current); close.emit()">Archive</button>
-
-        <h2>Activity</h2>
-        <div class="activity">
-          @for (group of cardActivity(); track group.entry.id) {
-            <p>
-              <strong>{{ displayActor(group.entry.actor) }}</strong>
-              {{ displayActivity(group.entry.message) }}
-              @if (group.count > 1) {
-                <span class="activity-count">×{{ group.count }}</span>
-              }
-            </p>
-          }
+      @if (activeConflict(); as conflict) {
+        <div class="conflict">
+          <strong>Conflict detected</strong>
+          <span>Server version {{ conflict.remoteVersion }} is newer than your version {{ conflict.localVersion }}.</span>
+          <button type="button" (click)="dismissConflict.emit(conflict.taskId)">Dismiss</button>
         </div>
-      </aside>
-    </div>
-  </section>
+      }
+
+      <div class="modal-body">
+        <div class="modal-main">
+          <div class="title-row">
+            <span class="card-icon" aria-hidden="true"></span>
+            <input
+              class="title"
+              [ngModel]="title()"
+              (ngModelChange)="title.set($event)"
+              (input)="scheduleSave()"
+              placeholder="Card title"
+            />
+          </div>
+
+          <div class="action-row">
+            <div class="action-item dates-action">
+              <span class="action-label">Dates</span>
+              <app-due-date-picker [value]="dueDate()" (valueChange)="onDueDateChange($event)" />
+            </div>
+            <div class="action-item">
+              <span class="action-label">Priority</span>
+              <div class="priority-chips" role="group" aria-label="Priority">
+                @for (level of priorities; track level) {
+                  <button
+                    type="button"
+                    class="priority-chip"
+                    [class.active]="priority() === level"
+                    (click)="onPriorityChange(level)"
+                  >
+                    P{{ level }}
+                  </button>
+                }
+              </div>
+            </div>
+            <label class="action-item cover-action">
+              <span class="action-label">Cover</span>
+              <input
+                type="color"
+                class="color-input"
+                [ngModel]="coverColor() || '#579dff'"
+                (input)="coverColor.set($any($event.target).value)"
+                (change)="commitCoverColor($any($event.target).value)"
+              />
+            </label>
+          </div>
+
+          <section class="block members-block">
+            <h3>Members</h3>
+            <app-board-members-multi-picker
+              [boardId]="current.boardId"
+              [members]="boardMembers()"
+              [values]="assignees()"
+              (valuesChange)="onAssigneesChange($event)"
+            />
+          </section>
+
+          @if (current.labels.length) {
+            <section class="block">
+              <h3>Labels</h3>
+              <div class="modal-labels">
+                @for (label of current.labels; track label.id) {
+                  <span [style.background]="label.color">{{ label.name || 'Label' }}</span>
+                }
+              </div>
+            </section>
+          }
+
+          <section class="block">
+            <div class="block-head">
+              <h3>Description</h3>
+            </div>
+            <textarea
+              [ngModel]="description()"
+              (ngModelChange)="description.set($event)"
+              (input)="scheduleSave()"
+              placeholder="Add a more detailed description..."
+              rows="6"
+            ></textarea>
+          </section>
+
+          <section class="block checklist-block">
+            <div class="block-head">
+              <div class="block-title">
+                <span class="block-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path
+                      d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H6v-2h5v2zm7-4H6v-2h12v2zm0-4H6V7h12v2z"
+                    />
+                  </svg>
+                </span>
+                <h3>Checklist</h3>
+              </div>
+              @if (checklistStats(); as stats) {
+                <span class="checklist-percent">{{ stats.percent }}%</span>
+              }
+            </div>
+
+            @if (checklistStats(); as stats) {
+              <div
+                class="checklist-progress"
+                role="progressbar"
+                [attr.aria-valuenow]="stats.percent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                [attr.aria-label]="stats.done + ' of ' + stats.total + ' complete'"
+              >
+                <div class="checklist-progress-bar" [style.width.%]="stats.percent"></div>
+              </div>
+            }
+
+            <ul class="checklist">
+              @for (item of current.checklist; track item.id) {
+                <li class="checklist-item" [class.pending]="isTempChecklistItem(item.id)">
+                  <label class="checklist-check">
+                    <input
+                      type="checkbox"
+                      class="checklist-checkbox"
+                      [checked]="item.checked"
+                      [disabled]="isTempChecklistItem(item.id)"
+                      (change)="toggleChecklistItem.emit({ id: item.id, checked: $any($event.target).checked })"
+                    />
+                    <span class="checklist-box" aria-hidden="true"></span>
+                  </label>
+                  <span class="checklist-text" [class.done]="item.checked">{{ item.text }}</span>
+                  @if (isTempChecklistItem(item.id)) {
+                    <span class="pending-dot" aria-hidden="true"></span>
+                  }
+                </li>
+              }
+            </ul>
+
+            <form class="checklist-add" (ngSubmit)="submitChecklist()">
+              <input
+                class="checklist-add-input"
+                [ngModel]="checklistText()"
+                name="checklistText"
+                (ngModelChange)="checklistText.set($event)"
+                placeholder="Add an item"
+                [disabled]="checklistPending()"
+              />
+              @if (checklistText().trim()) {
+                <button type="submit" class="checklist-add-btn" [disabled]="checklistPending()">
+                  {{ checklistPending() ? 'Adding…' : 'Add' }}
+                </button>
+              }
+            </form>
+          </section>
+        </div>
+
+        <aside class="modal-sidebar">
+          <section class="block sidebar-comments">
+            <div class="block-head">
+              <h3>Comments and activity</h3>
+            </div>
+            <form class="comment-form" (ngSubmit)="submitComment()">
+              <textarea
+                [ngModel]="commentBody()"
+                name="commentBody"
+                (ngModelChange)="commentBody.set($event)"
+                placeholder="Write a comment..."
+                rows="3"
+                [disabled]="commentPending()"
+              ></textarea>
+              <button type="submit" [disabled]="commentPending() || !commentBody().trim()">
+                {{ commentPending() ? 'Saving…' : 'Save' }}
+              </button>
+            </form>
+
+            <div class="feed">
+              @for (comment of current.comments; track comment.id) {
+                <article class="feed-item comment-item" [class.pending]="comment.id.startsWith('temp-comment-')">
+                  <strong>{{ comment.author }}</strong>
+                  <p>{{ comment.body }}</p>
+                  <time>{{ formatTimestamp(comment.createdAt) }}</time>
+                </article>
+              }
+
+              @for (group of cardActivity(); track group.entry.id) {
+                <article class="feed-item activity-item">
+                  <p>
+                    <strong>{{ displayActor(group.entry.actor) }}</strong>
+                    {{ displayActivity(group.entry.message) }}
+                    @if (group.count > 1) {
+                      <span class="activity-count">×{{ group.count }}</span>
+                    }
+                  </p>
+                  <time>{{ formatTimestamp(group.entry.createdAt) }}</time>
+                </article>
+              } @empty {
+                @if (!current.comments.length) {
+                  <p class="feed-empty">No comments or activity yet.</p>
+                }
+              }
+            </div>
+          </section>
+
+          <button type="button" class="danger" (click)="archiveCard.emit(current); close.emit()">Archive card</button>
+        </aside>
+      </div>
+    </section>
+  </div>
 }

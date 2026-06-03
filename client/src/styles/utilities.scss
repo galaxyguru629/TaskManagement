@@ -1,6 +1,6 @@
 .u-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(9, 30, 66, 0.32) transparent;
+  scrollbar-color: color-mix(in srgb, var(--text-tertiary) 65%, transparent) transparent;
 }
 
 .u-scrollbar::-webkit-scrollbar {
@@ -9,7 +9,7 @@
 }
 
 .u-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(9, 30, 66, 0.28);
+  background: color-mix(in srgb, var(--text-tertiary) 60%, transparent);
   border-radius: var(--radius-pill);
 }
 
@@ -27,7 +27,7 @@
 }
 
 .u-icon-button:hover {
-  background: rgba(9, 30, 66, 0.12);
+  background: color-mix(in srgb, var(--surface-interactive) 76%, var(--accent-soft));
 }
 
 .u-visually-hidden {
@@ -40,4 +40,100 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.ui-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-3);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-card);
+}
+
+.ui-input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2);
+  background: var(--surface-panel);
+  color: var(--text);
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast);
+}
+
+.ui-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.ui-button {
+  border: 0;
+  border-radius: var(--radius-2);
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
+}
+
+.ui-button:active {
+  transform: translateY(1px);
+}
+
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.ui-button-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.ui-button-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.ui-button-secondary {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-interactive);
+  color: var(--text);
+}
+
+.ui-button-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--surface-interactive) 74%, var(--accent-soft));
+}
+
+.ui-button-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.ui-button-ghost:hover:not(:disabled) {
+  background: var(--surface-interactive);
+}
+
+.ui-button-danger {
+  background: var(--danger);
+  color: var(--text-on-accent);
+}
+
+.ui-skeleton {
+  border-radius: var(--radius-2);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--surface-interactive) 92%, transparent) 0%,
+    color-mix(in srgb, var(--surface-interactive) 55%, transparent) 50%,
+    color-mix(in srgb, var(--surface-interactive) 92%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: ui-skeleton-shimmer 1.15s ease-in-out infinite;
+}
+
+@keyframes ui-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
 }

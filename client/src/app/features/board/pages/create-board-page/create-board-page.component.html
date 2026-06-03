@@ -1,0 +1,44 @@
+<main class="create-board-page">
+  <section class="card">
+    <p class="eyebrow">Create board</p>
+    <h1>Set up a new board</h1>
+    <p class="subtitle">Add a title, optional details, and an optional cover image.</p>
+
+    <form (ngSubmit)="submit()" class="form">
+      <label>
+        Title
+        <input name="title" [ngModel]="title" (ngModelChange)="title = $event" placeholder="Q3 roadmap" required />
+      </label>
+
+      <label>
+        Description
+        <textarea name="description" [ngModel]="description" (ngModelChange)="description = $event" rows="3" placeholder="What this board is for"></textarea>
+      </label>
+
+      <label>Board logo</label>
+      <label class="upload-dropzone">
+        <input type="file" accept="image/*" (change)="onImageSelected($event)" />
+        <span>{{ fileName || 'Choose image (max 2.5 MB)' }}</span>
+      </label>
+
+      @if (imagePreview()) {
+        <div class="preview removable">
+          <img [src]="imagePreview()" alt="Board cover preview" />
+          <button type="button" class="remove-image" (click)="removeImage()" aria-label="Remove board logo">
+            Remove
+          </button>
+        </div>
+      }
+
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
+
+      <div class="actions">
+        <button type="submit" [disabled]="creating() || !title.trim()">
+          {{ creating() ? 'Creating...' : 'Create board' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</main>

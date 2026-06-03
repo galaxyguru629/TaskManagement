@@ -1,40 +1,48 @@
 <article
   class="card"
   [class.card--conflict]="conflicted()"
-  (click)="open.emit(card())"
   tabindex="0"
+  (click)="open.emit(card())"
   (keydown.enter)="open.emit(card())"
 >
   @if (card().coverColor) {
     <div class="cover" [style.background]="card().coverColor"></div>
   }
+
   @if (card().labels.length) {
     <div class="labels">
       @for (label of card().labels; track label.id) {
-        <span class="label" [style.background]="label.color" [title]="label.name"></span>
+        <span class="label" [style.background]="label.color" [title]="label.name || 'Label'"></span>
       }
     </div>
   }
+
   <div class="title-row">
     <h3>{{ card().title }}</h3>
-    <button type="button" aria-label="Archive card" (click)="$event.stopPropagation(); archive.emit(card())">×</button>
+    <button type="button" aria-label="Archive card" (click)="archive.emit(card()); $event.stopPropagation()">×</button>
   </div>
-  @if (card().description || card().dueDate || card().comments.length || checklistProgress()) {
+
+  @if (assignees().length) {
+    <div class="assignees" aria-label="Assignees">
+      @for (member of assignees(); track member.auth0Sub) {
+        <span class="assignee-avatar" [title]="member.displayName || member.email || member.auth0Sub">
+          @if (member.pictureUrl) {
+            <img [src]="member.pictureUrl" [alt]="member.displayName || member.email || 'Assignee'" />
+          } @else {
+            <span class="avatar-fallback">{{ memberInitials(member) }}</span>
+          }
+        </span>
+      }
+    </div>
+  }
+
+  @if (checklistProgress() || card().dueDate) {
     <footer>
-      @if (card().description) {
-        <span title="Description">☰</span>
+      @if (checklistProgress(); as progress) {
+        <span>{{ progress }}</span>
       }
       @if (card().dueDate) {
-        <span class="due">{{ card().dueDate }}</span>
-      }
-      @if (checklistProgress()) {
-        <span>{{ checklistProgress() }}</span>
-      }
-      @if (card().comments.length) {
-        <span>{{ card().comments.length }}</span>
-      }
-      @if (conflicted()) {
-        <strong>Conflict</strong>
+        <time>{{ card().dueDate }}</time>
       }
     </footer>
   }

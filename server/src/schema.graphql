@@ -1,12 +1,20 @@
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
-}
-
 enum SortDirection {
   ASC
   DESC
+}
+
+enum BoardRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+  EXPIRED
 }
 
 enum TaskEventType {
@@ -31,7 +39,6 @@ enum BoardEventType {
 }
 
 input TaskFilterInput {
-  status: TaskStatus
   search: String
 }
 
@@ -45,21 +52,20 @@ input CreateTaskInput {
   listId: ID
   title: String!
   description: String
-  status: TaskStatus
   priority: Int
-  assignee: String
+  assignees: [String!]
   position: Float
   dueDate: String
   coverColor: String
+  clientMutationId: String
 }
 
 input UpdateTaskInput {
   listId: ID
   title: String
   description: String
-  status: TaskStatus
   priority: Int
-  assignee: String
+  assignees: [String!]
   position: Float
   dueDate: String
   coverColor: String
@@ -71,6 +77,7 @@ input CreateBoardInput {
   title: String!
   description: String
   background: String
+  logoImageData: String
 }
 
 input UpdateBoardInput {
@@ -79,16 +86,19 @@ input UpdateBoardInput {
   background: String
 }
 
+input UpdateMyProfileInput {
+  displayName: String!
+  pictureUrl: String
+}
+
 input CreateListInput {
   boardId: ID!
   title: String!
-  status: TaskStatus
   position: Float
 }
 
 input UpdateListInput {
   title: String
-  status: TaskStatus
   position: Float
   archived: Boolean
   clientMutationId: String
@@ -99,9 +109,15 @@ input MoveTaskInput {
   taskId: ID!
   toListId: ID!
   position: Float!
-  status: TaskStatus
   expectedVersion: Int
   clientMutationId: String
+}
+
+input InviteMemberInput {
+  boardId: ID!
+  email: String!
+  role: BoardRole
+  expiresInDays: Int
 }
 
 type Task {
@@ -110,9 +126,8 @@ type Task {
   listId: ID!
   title: String!
   description: String
-  status: TaskStatus!
   priority: Int!
-  assignee: String
+  assignees: [String!]!
   position: Float!
   dueDate: String
   coverColor: String
@@ -126,6 +141,8 @@ type Board {
   title: String!
   description: String
   background: String!
+  logoUrl: String
+  createdByAuth0Sub: ID!
   version: Int!
   createdAt: String!
   updatedAt: String!
@@ -135,7 +152,6 @@ type TaskList {
   id: ID!
   boardId: ID!
   title: String!
-  status: TaskStatus
   position: Float!
   archived: Boolean!
   version: Int!
@@ -175,15 +191,51 @@ type ActivityItem {
   createdAt: String!
 }
 
+type UserProfile {
+  auth0Sub: ID!
+  displayName: String!
+  email: String
+  pictureUrl: String
+  isOnboarded: Boolean!
+  lastSeenAt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type BoardMember {
+  boardId: ID!
+  auth0Sub: ID!
+  role: BoardRole!
+  displayName: String
+  email: String
+  pictureUrl: String
+  invitedBy: String
+  createdAt: String!
+}
+
+type BoardInvitation {
+  id: ID!
+  boardId: ID!
+  boardTitle: String!
+  boardBackground: String!
+  email: String!
+  role: BoardRole!
+  status: InvitationStatus!
+  invitedBy: String!
+  acceptedBy: String
+  expiresAt: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type BoardCard {
   id: ID!
   boardId: ID!
   listId: ID!
   title: String!
   description: String
-  status: TaskStatus!
   priority: Int!
-  assignee: String
+  assignees: [String!]!
   position: Float!
   dueDate: String
   coverColor: String
@@ -199,7 +251,6 @@ type BoardList {
   id: ID!
   boardId: ID!
   title: String!
-  status: TaskStatus
   position: Float!
   archived: Boolean!
   version: Int!
@@ -248,6 +299,11 @@ type BoardEvent {
 }
 
 type Query {
+  me: UserProfile
+  projectUsers(boardId: ID!): [UserProfile!]!
+  boardMembers(boardId: ID!): [BoardMember!]!
+  boardInvitations(boardId: ID!): [BoardInvitation!]!
+  myInvitations: [BoardInvitation!]!
   boards: [Board!]!
   board(id: ID!): Board
   defaultBoard: Board
@@ -258,6 +314,10 @@ type Query {
 }
 
 type Mutation {
+  updateMyProfile(input: UpdateMyProfileInput!): UserProfile!
+  inviteMember(input: InviteMemberInput!): BoardInvitation!
+  acceptInvitation(id: ID!): BoardInvitation!
+  declineInvitation(id: ID!): BoardInvitation!
   createBoard(input: CreateBoardInput!): Board!
   updateBoard(id: ID!, input: UpdateBoardInput!, expectedVersion: Int): BoardMutationResult!
   createList(input: CreateListInput!): TaskList!
@@ -268,10 +328,9 @@ type Mutation {
   deleteTask(id: ID!, expectedVersion: Int): TaskDeleteResult!
   createLabel(boardId: ID!, name: String, color: String!): Label!
   setTaskLabels(taskId: ID!, labelIds: [ID!]!): Task
-  createChecklistItem(taskId: ID!, text: String!): ChecklistItem!
+  createChecklistItem(taskId: ID!, text: String!, clientMutationId: String): ChecklistItem!
   updateChecklistItem(id: ID!, text: String, checked: Boolean): ChecklistItem
   addComment(taskId: ID!, body: String!): TaskComment!
-  simulateNetworkFailure: Boolean!
 }
 
 type BoardMutationResult {

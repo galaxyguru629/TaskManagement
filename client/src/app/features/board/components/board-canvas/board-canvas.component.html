@@ -1,7 +1,7 @@
 <div class="canvas u-scrollbar">
   @if (loading() && !lists().length) {
     @for (item of [1, 2, 3]; track item) {
-      <div class="list-skeleton"></div>
+      <div class="list-skeleton ui-skeleton"></div>
     }
   } @else {
     <div
@@ -16,6 +16,7 @@
           cdkDrag
           [cdkDragData]="list"
           [list]="list"
+          [members]="members()"
           [connectedTo]="connectedIds()"
           [conflicts]="conflicts()"
           (createCard)="createCard.emit($event)"

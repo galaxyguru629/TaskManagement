@@ -2,6 +2,9 @@
 @use './styles/motion';
 @use './styles/utilities';
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import 'flatpickr/dist/flatpickr.min.css';
+
 *,
 *::before,
 *::after {
@@ -16,6 +19,7 @@ body {
   background: var(--surface-app);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -35,4 +39,25 @@ button {
 
 a {
   color: inherit;
+}
+
+:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }

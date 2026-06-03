@@ -31,8 +31,10 @@ export type Board = {
   __typename?: 'Board';
   background: Scalars['String']['output'];
   createdAt: Scalars['String']['output'];
+  createdByAuth0Sub: Scalars['ID']['output'];
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  logoUrl?: Maybe<Scalars['String']['output']>;
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
@@ -41,7 +43,7 @@ export type Board = {
 export type BoardCard = {
   __typename?: 'BoardCard';
   archived: Scalars['Boolean']['output'];
-  assignee?: Maybe<Scalars['String']['output']>;
+  assignees: Array<Scalars['String']['output']>;
   boardId: Scalars['ID']['output'];
   checklist: Array<ChecklistItem>;
   comments: Array<TaskComment>;
@@ -53,7 +55,6 @@ export type BoardCard = {
   listId: Scalars['ID']['output'];
   position: Scalars['Float']['output'];
   priority: Scalars['Int']['output'];
-  status: TaskStatus;
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
@@ -89,6 +90,22 @@ export enum BoardEventType {
   ListUpdated = 'LIST_UPDATED'
 }
 
+export type BoardInvitation = {
+  __typename?: 'BoardInvitation';
+  acceptedBy?: Maybe<Scalars['String']['output']>;
+  boardBackground: Scalars['String']['output'];
+  boardId: Scalars['ID']['output'];
+  boardTitle: Scalars['String']['output'];
+  createdAt: Scalars['String']['output'];
+  email: Scalars['String']['output'];
+  expiresAt: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  invitedBy: Scalars['String']['output'];
+  role: BoardRole;
+  status: InvitationStatus;
+  updatedAt: Scalars['String']['output'];
+};
+
 export type BoardList = {
   __typename?: 'BoardList';
   archived: Scalars['Boolean']['output'];
@@ -97,10 +114,21 @@ export type BoardList = {
   createdAt: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   position: Scalars['Float']['output'];
-  status?: Maybe<TaskStatus>;
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
+};
+
+export type BoardMember = {
+  __typename?: 'BoardMember';
+  auth0Sub: Scalars['ID']['output'];
+  boardId: Scalars['ID']['output'];
+  createdAt: Scalars['String']['output'];
+  displayName?: Maybe<Scalars['String']['output']>;
+  email?: Maybe<Scalars['String']['output']>;
+  invitedBy?: Maybe<Scalars['String']['output']>;
+  pictureUrl?: Maybe<Scalars['String']['output']>;
+  role: BoardRole;
 };
 
 export type BoardMutationResult = {
@@ -109,6 +137,12 @@ export type BoardMutationResult = {
   conflict: Scalars['Boolean']['output'];
   success: Scalars['Boolean']['output'];
 };
+
+export enum BoardRole {
+  Admin = 'ADMIN',
+  Member = 'MEMBER',
+  Owner = 'OWNER'
+}
 
 export type BoardView = {
   __typename?: 'BoardView';
@@ -130,27 +164,42 @@ export type ChecklistItem = {
 export type CreateBoardInput = {
   background?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
+  logoImageData?: InputMaybe<Scalars['String']['input']>;
   title: Scalars['String']['input'];
 };
 
 export type CreateListInput = {
   boardId: Scalars['ID']['input'];
   position?: InputMaybe<Scalars['Float']['input']>;
-  status?: InputMaybe<TaskStatus>;
   title: Scalars['String']['input'];
 };
 
 export type CreateTaskInput = {
-  assignee?: InputMaybe<Scalars['String']['input']>;
+  assignees?: InputMaybe<Array<Scalars['String']['input']>>;
   boardId?: InputMaybe<Scalars['ID']['input']>;
+  clientMutationId?: InputMaybe<Scalars['String']['input']>;
   coverColor?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   dueDate?: InputMaybe<Scalars['String']['input']>;
   listId?: InputMaybe<Scalars['ID']['input']>;
   position?: InputMaybe<Scalars['Float']['input']>;
   priority?: InputMaybe<Scalars['Int']['input']>;
-  status?: InputMaybe<TaskStatus>;
   title: Scalars['String']['input'];
+};
+
+export enum InvitationStatus {
+  Accepted = 'ACCEPTED',
+  Declined = 'DECLINED',
+  Expired = 'EXPIRED',
+  Pending = 'PENDING',
+  Revoked = 'REVOKED'
+}
+
+export type InviteMemberInput = {
+  boardId: Scalars['ID']['input'];
+  email: Scalars['String']['input'];
+  expiresInDays?: InputMaybe<Scalars['Int']['input']>;
+  role?: InputMaybe<BoardRole>;
 };
 
 export type Label = {
@@ -173,27 +222,34 @@ export type MoveTaskInput = {
   clientMutationId?: InputMaybe<Scalars['String']['input']>;
   expectedVersion?: InputMaybe<Scalars['Int']['input']>;
   position: Scalars['Float']['input'];
-  status?: InputMaybe<TaskStatus>;
   taskId: Scalars['ID']['input'];
   toListId: Scalars['ID']['input'];
 };
 
 export type Mutation = {
   __typename?: 'Mutation';
+  acceptInvitation: BoardInvitation;
   addComment: TaskComment;
   createBoard: Board;
   createChecklistItem: ChecklistItem;
   createLabel: Label;
   createList: TaskList;
   createTask: Task;
+  declineInvitation: BoardInvitation;
   deleteTask: TaskDeleteResult;
+  inviteMember: BoardInvitation;
   moveTask: TaskUpdateResult;
   setTaskLabels?: Maybe<Task>;
-  simulateNetworkFailure: Scalars['Boolean']['output'];
   updateBoard: BoardMutationResult;
   updateChecklistItem?: Maybe<ChecklistItem>;
   updateList: ListMutationResult;
+  updateMyProfile: UserProfile;
   updateTask: TaskUpdateResult;
+};
+
+
+export type MutationAcceptInvitationArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -209,6 +265,7 @@ export type MutationCreateBoardArgs = {
 
 
 export type MutationCreateChecklistItemArgs = {
+  clientMutationId?: InputMaybe<Scalars['String']['input']>;
   taskId: Scalars['ID']['input'];
   text: Scalars['String']['input'];
 };
@@ -231,9 +288,19 @@ export type MutationCreateTaskArgs = {
 };
 
 
+export type MutationDeclineInvitationArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationDeleteTaskArgs = {
   expectedVersion?: InputMaybe<Scalars['Int']['input']>;
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationInviteMemberArgs = {
+  input: InviteMemberInput;
 };
 
 
@@ -269,6 +336,11 @@ export type MutationUpdateListArgs = {
 };
 
 
+export type MutationUpdateMyProfileArgs = {
+  input: UpdateMyProfileInput;
+};
+
+
 export type MutationUpdateTaskArgs = {
   expectedVersion?: InputMaybe<Scalars['Int']['input']>;
   id: Scalars['ID']['input'];
@@ -286,10 +358,15 @@ export type PageInfo = {
 export type Query = {
   __typename?: 'Query';
   board?: Maybe<Board>;
+  boardInvitations: Array<BoardInvitation>;
+  boardMembers: Array<BoardMember>;
   boardView?: Maybe<BoardView>;
   boards: Array<Board>;
   defaultBoard?: Maybe<Board>;
   health: Scalars['String']['output'];
+  me?: Maybe<UserProfile>;
+  myInvitations: Array<BoardInvitation>;
+  projectUsers: Array<UserProfile>;
   task?: Maybe<Task>;
   tasks: TaskConnection;
 };
@@ -300,7 +377,22 @@ export type QueryBoardArgs = {
 };
 
 
+export type QueryBoardInvitationsArgs = {
+  boardId: Scalars['ID']['input'];
+};
+
+
+export type QueryBoardMembersArgs = {
+  boardId: Scalars['ID']['input'];
+};
+
+
 export type QueryBoardViewArgs = {
+  boardId: Scalars['ID']['input'];
+};
+
+
+export type QueryProjectUsersArgs = {
   boardId: Scalars['ID']['input'];
 };
 
@@ -336,7 +428,7 @@ export type SubscriptionBoardChangedArgs = {
 export type Task = {
   __typename?: 'Task';
   archived: Scalars['Boolean']['output'];
-  assignee?: Maybe<Scalars['String']['output']>;
+  assignees: Array<Scalars['String']['output']>;
   boardId: Scalars['ID']['output'];
   coverColor?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
@@ -345,7 +437,6 @@ export type Task = {
   listId: Scalars['ID']['output'];
   position: Scalars['Float']['output'];
   priority: Scalars['Int']['output'];
-  status: TaskStatus;
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
@@ -388,7 +479,6 @@ export enum TaskEventType {
 
 export type TaskFilterInput = {
   search?: InputMaybe<Scalars['String']['input']>;
-  status?: InputMaybe<TaskStatus>;
 };
 
 export type TaskList = {
@@ -398,7 +488,6 @@ export type TaskList = {
   createdAt: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   position: Scalars['Float']['output'];
-  status?: Maybe<TaskStatus>;
   title: Scalars['String']['output'];
   updatedAt: Scalars['String']['output'];
   version: Scalars['Int']['output'];
@@ -408,12 +497,6 @@ export type TaskSortInput = {
   direction: SortDirection;
   field: Scalars['String']['input'];
 };
-
-export enum TaskStatus {
-  Done = 'DONE',
-  InProgress = 'IN_PROGRESS',
-  Todo = 'TODO'
-}
 
 export type TaskUpdateResult = {
   __typename?: 'TaskUpdateResult';
@@ -432,13 +515,17 @@ export type UpdateListInput = {
   archived?: InputMaybe<Scalars['Boolean']['input']>;
   clientMutationId?: InputMaybe<Scalars['String']['input']>;
   position?: InputMaybe<Scalars['Float']['input']>;
-  status?: InputMaybe<TaskStatus>;
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateMyProfileInput = {
+  displayName: Scalars['String']['input'];
+  pictureUrl?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateTaskInput = {
   archived?: InputMaybe<Scalars['Boolean']['input']>;
-  assignee?: InputMaybe<Scalars['String']['input']>;
+  assignees?: InputMaybe<Array<Scalars['String']['input']>>;
   clientMutationId?: InputMaybe<Scalars['String']['input']>;
   coverColor?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
@@ -446,13 +533,30 @@ export type UpdateTaskInput = {
   listId?: InputMaybe<Scalars['ID']['input']>;
   position?: InputMaybe<Scalars['Float']['input']>;
   priority?: InputMaybe<Scalars['Int']['input']>;
-  status?: InputMaybe<TaskStatus>;
   title?: InputMaybe<Scalars['String']['input']>;
 };
 
-export type BoardFieldsFragment = { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, version: number, createdAt: string, updatedAt: string };
+export type UserProfile = {
+  __typename?: 'UserProfile';
+  auth0Sub: Scalars['ID']['output'];
+  createdAt: Scalars['String']['output'];
+  displayName: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  isOnboarded: Scalars['Boolean']['output'];
+  lastSeenAt?: Maybe<Scalars['String']['output']>;
+  pictureUrl?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['String']['output'];
+};
+
+export type BoardFieldsFragment = { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, logoUrl?: string | null, createdByAuth0Sub: string, version: number, createdAt: string, updatedAt: string };
 
 export type LabelFieldsFragment = { __typename?: 'Label', id: string, boardId: string, name: string, color: string };
+
+export type BoardMemberFieldsFragment = { __typename?: 'BoardMember', boardId: string, auth0Sub: string, role: BoardRole, displayName?: string | null, email?: string | null, pictureUrl?: string | null, invitedBy?: string | null, createdAt: string };
+
+export type BoardInvitationFieldsFragment = { __typename?: 'BoardInvitation', id: string, boardId: string, boardTitle: string, boardBackground: string, email: string, role: BoardRole, status: InvitationStatus, invitedBy: string, acceptedBy?: string | null, expiresAt: string, createdAt: string, updatedAt: string };
+
+export type InviteUserFieldsFragment = { __typename?: 'UserProfile', auth0Sub: string, displayName: string, email?: string | null, pictureUrl?: string | null };
 
 export type ChecklistItemFieldsFragment = { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number };
 
@@ -460,35 +564,89 @@ export type CommentFieldsFragment = { __typename?: 'TaskComment', id: string, ta
 
 export type ActivityFieldsFragment = { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string };
 
-export type CardFieldsFragment = { __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> };
+export type CardFieldsFragment = { __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> };
 
-export type TaskFieldsFragment = { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string };
+export type TaskFieldsFragment = { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string };
 
-export type ListFieldsFragment = { __typename?: 'BoardList', id: string, boardId: string, title: string, status?: TaskStatus | null, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> }> };
+export type ListFieldsFragment = { __typename?: 'BoardList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> }> };
 
 export type DefaultBoardQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type DefaultBoardQuery = { __typename?: 'Query', defaultBoard?: { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, version: number, createdAt: string, updatedAt: string } | null };
+export type DefaultBoardQuery = { __typename?: 'Query', defaultBoard?: { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, logoUrl?: string | null, createdByAuth0Sub: string, version: number, createdAt: string, updatedAt: string } | null };
 
 export type BoardsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type BoardsQuery = { __typename?: 'Query', boards: Array<{ __typename?: 'Board', id: string, title: string, description?: string | null, background: string, version: number, createdAt: string, updatedAt: string }> };
+export type BoardsQuery = { __typename?: 'Query', boards: Array<{ __typename?: 'Board', id: string, title: string, description?: string | null, background: string, logoUrl?: string | null, createdByAuth0Sub: string, version: number, createdAt: string, updatedAt: string }> };
+
+export type BoardMembersQueryVariables = Exact<{
+  boardId: Scalars['ID']['input'];
+}>;
+
+
+export type BoardMembersQuery = { __typename?: 'Query', boardMembers: Array<{ __typename?: 'BoardMember', boardId: string, auth0Sub: string, role: BoardRole, displayName?: string | null, email?: string | null, pictureUrl?: string | null, invitedBy?: string | null, createdAt: string }> };
+
+export type BoardInvitationsQueryVariables = Exact<{
+  boardId: Scalars['ID']['input'];
+}>;
+
+
+export type BoardInvitationsQuery = { __typename?: 'Query', boardInvitations: Array<{ __typename?: 'BoardInvitation', id: string, boardId: string, boardTitle: string, boardBackground: string, email: string, role: BoardRole, status: InvitationStatus, invitedBy: string, acceptedBy?: string | null, expiresAt: string, createdAt: string, updatedAt: string }> };
+
+export type ProjectUsersQueryVariables = Exact<{
+  boardId: Scalars['ID']['input'];
+}>;
+
+
+export type ProjectUsersQuery = { __typename?: 'Query', projectUsers: Array<{ __typename?: 'UserProfile', auth0Sub: string, displayName: string, email?: string | null, pictureUrl?: string | null }> };
+
+export type MyInvitationsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MyInvitationsQuery = { __typename?: 'Query', myInvitations: Array<{ __typename?: 'BoardInvitation', id: string, boardId: string, boardTitle: string, boardBackground: string, email: string, role: BoardRole, status: InvitationStatus, invitedBy: string, acceptedBy?: string | null, expiresAt: string, createdAt: string, updatedAt: string }> };
 
 export type BoardViewQueryVariables = Exact<{
   boardId: Scalars['ID']['input'];
 }>;
 
 
-export type BoardViewQuery = { __typename?: 'Query', boardView?: { __typename?: 'BoardView', board: { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, version: number, createdAt: string, updatedAt: string }, lists: Array<{ __typename?: 'BoardList', id: string, boardId: string, title: string, status?: TaskStatus | null, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> }> }>, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, activity: Array<{ __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string }> } | null };
+export type BoardViewQuery = { __typename?: 'Query', boardView?: { __typename?: 'BoardView', board: { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, logoUrl?: string | null, createdByAuth0Sub: string, version: number, createdAt: string, updatedAt: string }, lists: Array<{ __typename?: 'BoardList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string, cards: Array<{ __typename?: 'BoardCard', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, checklist: Array<{ __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number }>, comments: Array<{ __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string }> }> }>, labels: Array<{ __typename?: 'Label', id: string, boardId: string, name: string, color: string }>, activity: Array<{ __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string }> } | null };
 
 export type CreateListMutationVariables = Exact<{
   input: CreateListInput;
 }>;
 
 
-export type CreateListMutation = { __typename?: 'Mutation', createList: { __typename?: 'TaskList', id: string, boardId: string, title: string, status?: TaskStatus | null, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } };
+export type CreateListMutation = { __typename?: 'Mutation', createList: { __typename?: 'TaskList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } };
+
+export type CreateBoardMutationVariables = Exact<{
+  input: CreateBoardInput;
+}>;
+
+
+export type CreateBoardMutation = { __typename?: 'Mutation', createBoard: { __typename?: 'Board', id: string, title: string, description?: string | null, background: string, logoUrl?: string | null, createdByAuth0Sub: string, version: number, createdAt: string, updatedAt: string } };
+
+export type InviteMemberMutationVariables = Exact<{
+  input: InviteMemberInput;
+}>;
+
+
+export type InviteMemberMutation = { __typename?: 'Mutation', inviteMember: { __typename?: 'BoardInvitation', id: string, boardId: string, boardTitle: string, boardBackground: string, email: string, role: BoardRole, status: InvitationStatus, invitedBy: string, acceptedBy?: string | null, expiresAt: string, createdAt: string, updatedAt: string } };
+
+export type AcceptInvitationMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type AcceptInvitationMutation = { __typename?: 'Mutation', acceptInvitation: { __typename?: 'BoardInvitation', id: string, boardId: string, boardTitle: string, boardBackground: string, email: string, role: BoardRole, status: InvitationStatus, invitedBy: string, acceptedBy?: string | null, expiresAt: string, createdAt: string, updatedAt: string } };
+
+export type DeclineInvitationMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeclineInvitationMutation = { __typename?: 'Mutation', declineInvitation: { __typename?: 'BoardInvitation', id: string, boardId: string, boardTitle: string, boardBackground: string, email: string, role: BoardRole, status: InvitationStatus, invitedBy: string, acceptedBy?: string | null, expiresAt: string, createdAt: string, updatedAt: string } };
 
 export type UpdateListMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -497,14 +655,14 @@ export type UpdateListMutationVariables = Exact<{
 }>;
 
 
-export type UpdateListMutation = { __typename?: 'Mutation', updateList: { __typename?: 'ListMutationResult', success: boolean, conflict: boolean, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, status?: TaskStatus | null, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null } };
+export type UpdateListMutation = { __typename?: 'Mutation', updateList: { __typename?: 'ListMutationResult', success: boolean, conflict: boolean, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null } };
 
 export type CreateTaskMutationVariables = Exact<{
   input: CreateTaskInput;
 }>;
 
 
-export type CreateTaskMutation = { __typename?: 'Mutation', createTask: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } };
+export type CreateTaskMutation = { __typename?: 'Mutation', createTask: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } };
 
 export type UpdateTaskMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -513,14 +671,14 @@ export type UpdateTaskMutationVariables = Exact<{
 }>;
 
 
-export type UpdateTaskMutation = { __typename?: 'Mutation', updateTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
+export type UpdateTaskMutation = { __typename?: 'Mutation', updateTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
 
 export type MoveTaskMutationVariables = Exact<{
   input: MoveTaskInput;
 }>;
 
 
-export type MoveTaskMutation = { __typename?: 'Mutation', moveTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
+export type MoveTaskMutation = { __typename?: 'Mutation', moveTask: { __typename?: 'TaskUpdateResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
 
 export type DeleteTaskMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -528,7 +686,7 @@ export type DeleteTaskMutationVariables = Exact<{
 }>;
 
 
-export type DeleteTaskMutation = { __typename?: 'Mutation', deleteTask: { __typename?: 'TaskDeleteResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
+export type DeleteTaskMutation = { __typename?: 'Mutation', deleteTask: { __typename?: 'TaskDeleteResult', success: boolean, conflict: boolean, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null } };
 
 export type CreateLabelMutationVariables = Exact<{
   boardId: Scalars['ID']['input'];
@@ -545,11 +703,12 @@ export type SetTaskLabelsMutationVariables = Exact<{
 }>;
 
 
-export type SetTaskLabelsMutation = { __typename?: 'Mutation', setTaskLabels?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null };
+export type SetTaskLabelsMutation = { __typename?: 'Mutation', setTaskLabels?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null };
 
 export type CreateChecklistItemMutationVariables = Exact<{
   taskId: Scalars['ID']['input'];
   text: Scalars['String']['input'];
+  clientMutationId?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
@@ -572,17 +731,26 @@ export type AddCommentMutationVariables = Exact<{
 
 export type AddCommentMutation = { __typename?: 'Mutation', addComment: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } };
 
-export type SimulateNetworkFailureMutationVariables = Exact<{ [key: string]: never; }>;
-
-
-export type SimulateNetworkFailureMutation = { __typename?: 'Mutation', simulateNetworkFailure: boolean };
-
 export type BoardChangedSubscriptionVariables = Exact<{
   boardId: Scalars['ID']['input'];
 }>;
 
 
-export type BoardChangedSubscription = { __typename?: 'Subscription', boardChanged: { __typename?: 'BoardEvent', type: BoardEventType, boardId: string, clientMutationId?: string | null, actorId?: string | null, actorName?: string | null, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, status: TaskStatus, priority: number, assignee?: string | null, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, status?: TaskStatus | null, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null, label?: { __typename?: 'Label', id: string, boardId: string, name: string, color: string } | null, comment?: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } | null, checklistItem?: { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number } | null, activity?: { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string } | null } };
+export type BoardChangedSubscription = { __typename?: 'Subscription', boardChanged: { __typename?: 'BoardEvent', type: BoardEventType, boardId: string, clientMutationId?: string | null, actorId?: string | null, actorName?: string | null, task?: { __typename?: 'Task', id: string, boardId: string, listId: string, title: string, description?: string | null, priority: number, assignees: Array<string>, position: number, dueDate?: string | null, coverColor?: string | null, archived: boolean, version: number, updatedAt: string } | null, list?: { __typename?: 'TaskList', id: string, boardId: string, title: string, position: number, archived: boolean, version: number, createdAt: string, updatedAt: string } | null, label?: { __typename?: 'Label', id: string, boardId: string, name: string, color: string } | null, comment?: { __typename?: 'TaskComment', id: string, taskId: string, body: string, author: string, createdAt: string } | null, checklistItem?: { __typename?: 'ChecklistItem', id: string, taskId: string, text: string, checked: boolean, position: number } | null, activity?: { __typename?: 'ActivityItem', id: string, taskId?: string | null, type: string, message: string, actor: string, createdAt: string } | null } };
+
+export type UserProfileFieldsFragment = { __typename?: 'UserProfile', auth0Sub: string, displayName: string, email?: string | null, pictureUrl?: string | null, isOnboarded: boolean, lastSeenAt?: string | null, createdAt: string, updatedAt: string };
+
+export type MeQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'UserProfile', auth0Sub: string, displayName: string, email?: string | null, pictureUrl?: string | null, isOnboarded: boolean, lastSeenAt?: string | null, createdAt: string, updatedAt: string } | null };
+
+export type UpdateMyProfileMutationVariables = Exact<{
+  input: UpdateMyProfileInput;
+}>;
+
+
+export type UpdateMyProfileMutation = { __typename?: 'Mutation', updateMyProfile: { __typename?: 'UserProfile', auth0Sub: string, displayName: string, email?: string | null, pictureUrl?: string | null, isOnboarded: boolean, lastSeenAt?: string | null, createdAt: string, updatedAt: string } };
 
 export const BoardFieldsFragmentDoc = gql`
     fragment BoardFields on Board {
@@ -590,9 +758,47 @@ export const BoardFieldsFragmentDoc = gql`
   title
   description
   background
+  logoUrl
+  createdByAuth0Sub
   version
   createdAt
   updatedAt
+}
+    `;
+export const BoardMemberFieldsFragmentDoc = gql`
+    fragment BoardMemberFields on BoardMember {
+  boardId
+  auth0Sub
+  role
+  displayName
+  email
+  pictureUrl
+  invitedBy
+  createdAt
+}
+    `;
+export const BoardInvitationFieldsFragmentDoc = gql`
+    fragment BoardInvitationFields on BoardInvitation {
+  id
+  boardId
+  boardTitle
+  boardBackground
+  email
+  role
+  status
+  invitedBy
+  acceptedBy
+  expiresAt
+  createdAt
+  updatedAt
+}
+    `;
+export const InviteUserFieldsFragmentDoc = gql`
+    fragment InviteUserFields on UserProfile {
+  auth0Sub
+  displayName
+  email
+  pictureUrl
 }
     `;
 export const ActivityFieldsFragmentDoc = gql`
@@ -612,9 +818,8 @@ export const TaskFieldsFragmentDoc = gql`
   listId
   title
   description
-  status
   priority
-  assignee
+  assignees
   position
   dueDate
   coverColor
@@ -656,9 +861,8 @@ export const CardFieldsFragmentDoc = gql`
   listId
   title
   description
-  status
   priority
-  assignee
+  assignees
   position
   dueDate
   coverColor
@@ -683,7 +887,6 @@ export const ListFieldsFragmentDoc = gql`
   id
   boardId
   title
-  status
   position
   archived
   version
@@ -694,6 +897,18 @@ export const ListFieldsFragmentDoc = gql`
   }
 }
     ${CardFieldsFragmentDoc}`;
+export const UserProfileFieldsFragmentDoc = gql`
+    fragment UserProfileFields on UserProfile {
+  auth0Sub
+  displayName
+  email
+  pictureUrl
+  isOnboarded
+  lastSeenAt
+  createdAt
+  updatedAt
+}
+    `;
 export const DefaultBoardDocument = gql`
     query DefaultBoard {
   defaultBoard {
@@ -725,6 +940,78 @@ export const BoardsDocument = gql`
   })
   export class BoardsGQL extends Apollo.Query<BoardsQuery, BoardsQueryVariables> {
     override document = BoardsDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const BoardMembersDocument = gql`
+    query BoardMembers($boardId: ID!) {
+  boardMembers(boardId: $boardId) {
+    ...BoardMemberFields
+  }
+}
+    ${BoardMemberFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class BoardMembersGQL extends Apollo.Query<BoardMembersQuery, BoardMembersQueryVariables> {
+    override document = BoardMembersDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const BoardInvitationsDocument = gql`
+    query BoardInvitations($boardId: ID!) {
+  boardInvitations(boardId: $boardId) {
+    ...BoardInvitationFields
+  }
+}
+    ${BoardInvitationFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class BoardInvitationsGQL extends Apollo.Query<BoardInvitationsQuery, BoardInvitationsQueryVariables> {
+    override document = BoardInvitationsDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const ProjectUsersDocument = gql`
+    query ProjectUsers($boardId: ID!) {
+  projectUsers(boardId: $boardId) {
+    ...InviteUserFields
+  }
+}
+    ${InviteUserFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class ProjectUsersGQL extends Apollo.Query<ProjectUsersQuery, ProjectUsersQueryVariables> {
+    override document = ProjectUsersDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const MyInvitationsDocument = gql`
+    query MyInvitations {
+  myInvitations {
+    ...BoardInvitationFields
+  }
+}
+    ${BoardInvitationFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class MyInvitationsGQL extends Apollo.Query<MyInvitationsQuery, MyInvitationsQueryVariables> {
+    override document = MyInvitationsDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);
@@ -768,7 +1055,6 @@ export const CreateListDocument = gql`
     id
     boardId
     title
-    status
     position
     archived
     version
@@ -788,6 +1074,78 @@ export const CreateListDocument = gql`
       super(apollo);
     }
   }
+export const CreateBoardDocument = gql`
+    mutation CreateBoard($input: CreateBoardInput!) {
+  createBoard(input: $input) {
+    ...BoardFields
+  }
+}
+    ${BoardFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class CreateBoardGQL extends Apollo.Mutation<CreateBoardMutation, CreateBoardMutationVariables> {
+    override document = CreateBoardDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const InviteMemberDocument = gql`
+    mutation InviteMember($input: InviteMemberInput!) {
+  inviteMember(input: $input) {
+    ...BoardInvitationFields
+  }
+}
+    ${BoardInvitationFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class InviteMemberGQL extends Apollo.Mutation<InviteMemberMutation, InviteMemberMutationVariables> {
+    override document = InviteMemberDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const AcceptInvitationDocument = gql`
+    mutation AcceptInvitation($id: ID!) {
+  acceptInvitation(id: $id) {
+    ...BoardInvitationFields
+  }
+}
+    ${BoardInvitationFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class AcceptInvitationGQL extends Apollo.Mutation<AcceptInvitationMutation, AcceptInvitationMutationVariables> {
+    override document = AcceptInvitationDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const DeclineInvitationDocument = gql`
+    mutation DeclineInvitation($id: ID!) {
+  declineInvitation(id: $id) {
+    ...BoardInvitationFields
+  }
+}
+    ${BoardInvitationFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class DeclineInvitationGQL extends Apollo.Mutation<DeclineInvitationMutation, DeclineInvitationMutationVariables> {
+    override document = DeclineInvitationDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
 export const UpdateListDocument = gql`
     mutation UpdateList($id: ID!, $input: UpdateListInput!, $expectedVersion: Int) {
   updateList(id: $id, input: $input, expectedVersion: $expectedVersion) {
@@ -797,7 +1155,6 @@ export const UpdateListDocument = gql`
       id
       boardId
       title
-      status
       position
       archived
       version
@@ -939,8 +1296,12 @@ export const SetTaskLabelsDocument = gql`
     }
   }
 export const CreateChecklistItemDocument = gql`
-    mutation CreateChecklistItem($taskId: ID!, $text: String!) {
-  createChecklistItem(taskId: $taskId, text: $text) {
+    mutation CreateChecklistItem($taskId: ID!, $text: String!, $clientMutationId: String) {
+  createChecklistItem(
+    taskId: $taskId
+    text: $text
+    clientMutationId: $clientMutationId
+  ) {
     ...ChecklistItemFields
   }
 }
@@ -992,22 +1353,6 @@ export const AddCommentDocument = gql`
       super(apollo);
     }
   }
-export const SimulateNetworkFailureDocument = gql`
-    mutation SimulateNetworkFailure {
-  simulateNetworkFailure
-}
-    `;
-
-  @Injectable({
-    providedIn: 'root'
-  })
-  export class SimulateNetworkFailureGQL extends Apollo.Mutation<SimulateNetworkFailureMutation, SimulateNetworkFailureMutationVariables> {
-    override document = SimulateNetworkFailureDocument;
-    
-    constructor(apollo: Apollo.Apollo) {
-      super(apollo);
-    }
-  }
 export const BoardChangedDocument = gql`
     subscription BoardChanged($boardId: ID!) {
   boardChanged(boardId: $boardId) {
@@ -1023,7 +1368,6 @@ export const BoardChangedDocument = gql`
       id
       boardId
       title
-      status
       position
       archived
       version
@@ -1055,6 +1399,42 @@ ${ActivityFieldsFragmentDoc}`;
   })
   export class BoardChangedGQL extends Apollo.Subscription<BoardChangedSubscription, BoardChangedSubscriptionVariables> {
     override document = BoardChangedDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const MeDocument = gql`
+    query Me {
+  me {
+    ...UserProfileFields
+  }
+}
+    ${UserProfileFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class MeGQL extends Apollo.Query<MeQuery, MeQueryVariables> {
+    override document = MeDocument;
+    
+    constructor(apollo: Apollo.Apollo) {
+      super(apollo);
+    }
+  }
+export const UpdateMyProfileDocument = gql`
+    mutation UpdateMyProfile($input: UpdateMyProfileInput!) {
+  updateMyProfile(input: $input) {
+    ...UserProfileFields
+  }
+}
+    ${UserProfileFieldsFragmentDoc}`;
+
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class UpdateMyProfileGQL extends Apollo.Mutation<UpdateMyProfileMutation, UpdateMyProfileMutationVariables> {
+    override document = UpdateMyProfileDocument;
     
     constructor(apollo: Apollo.Apollo) {
       super(apollo);

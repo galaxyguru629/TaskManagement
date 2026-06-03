@@ -6,6 +6,8 @@ export interface AuthUser {
   id: string;
   name: string | null;
   email: string | null;
+  pictureUrl: string | null;
+  emailVerified: boolean;
 }
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -33,7 +35,33 @@ function userFromClaims(claims: JWTPayload): AuthUser {
     id: sub,
     name: typeof claims.name === 'string' ? claims.name : null,
     email: typeof claims.email === 'string' ? claims.email : null,
+    pictureUrl: typeof claims.picture === 'string' ? claims.picture : null,
+    emailVerified: claims.email_verified === true,
   };
+}
+
+async function enrichFromUserInfo(token: string, user: AuthUser): Promise<AuthUser> {
+  if (user.email) return user;
+  try {
+    const endpoint = new URL('userinfo', env.auth0Issuer).toString();
+    const response = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return user;
+    const payload = (await response.json()) as Record<string, unknown>;
+    return {
+      ...user,
+      name: typeof payload.name === 'string' ? payload.name : user.name,
+      email: typeof payload.email === 'string' ? payload.email : user.email,
+      pictureUrl: typeof payload.picture === 'string' ? payload.picture : user.pictureUrl,
+      emailVerified:
+        typeof payload.email_verified === 'boolean'
+          ? payload.email_verified
+          : user.emailVerified,
+    };
+  } catch {
+    return user;
+  }
 }
 
 export async function authenticateHeader(header: string | null | undefined): Promise<AuthUser | null> {
@@ -51,7 +79,8 @@ export async function authenticateHeader(header: string | null | undefined): Pro
             audience: env.auth0Audience,
           })
         ).payload;
-    return userFromClaims(payload);
+    const user = userFromClaims(payload);
+    return enrichFromUserInfo(token, user);
   } catch {
     throw authError('Invalid or expired token.');
   }
