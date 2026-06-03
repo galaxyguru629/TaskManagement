@@ -11,7 +11,7 @@ This repo separates **continuous integration** (GitHub Actions) from **continuou
 
 ### CI jobs (`.github/workflows/ci.yml`)
 
-1. **Server** — `npm ci`, TypeScript build, `node --test` (in-memory PostgreSQL via `pg-mem`; no secrets or live DB).
+1. **Server** — `npm ci`, TypeScript build, `scripts/run-tests.mjs` (in-memory PostgreSQL via `pg-mem`; test env placeholders, no `server/.env` or secrets).
 2. **Client** — `npm ci`, production Angular build (`prebuild` generates `environment.config.ts` from defaults; no `client/.env` required).
 3. **GraphQL codegen** — regenerates types and fails if `graphql.ts` would change (run `npm run codegen --prefix client` locally before pushing).
 

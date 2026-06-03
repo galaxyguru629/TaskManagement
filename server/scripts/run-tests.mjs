@@ -34,5 +34,19 @@ if (testFiles.length === 0) {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, ['--test', ...testFiles], { stdio: 'inherit' });
+/** Dummy values for config/env.ts — tests use pg-mem, not a real database or Auth0. */
+const testEnv = {
+  NODE_ENV: 'test',
+  PORT: '4000',
+  HOST: '127.0.0.1',
+  DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+  DATABASE_SSL: 'false',
+  AUTH0_DOMAIN: 'example.auth0.com',
+  AUTH0_AUDIENCE: 'https://task-dashboard-api',
+};
+
+const result = spawnSync(process.execPath, ['--test', ...testFiles], {
+  stdio: 'inherit',
+  env: { ...process.env, ...testEnv },
+});
 process.exit(result.status ?? 1);
