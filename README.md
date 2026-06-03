@@ -173,7 +173,7 @@ Generates typed Apollo documents from `server/src/schema.graphql` and `src/app/g
 
 ## API hosting
 
-1. Deploy `server/` to **Render**, **Railway**, or **Fly.io** (`npm run build && npm start`).
+1. Deploy `server/` to **Render** as a **Web Service** (not Static Site). Use `render.yaml` or set **Root Directory** to `server`, **Build Command** to `npm ci --include=dev && npm run build`, **Start Command** to `npm start`. If `NODE_ENV=production` is set in Render, you must use `--include=dev` on install so TypeScript and `@types/node` are available for the build.
 2. Set `DATABASE_URL`, Auth0, `PORT`, and `CORS_ORIGINS` in the API host environment.
 3. Run `npm run migrate` during setup or release.
 4. Point client `GRAPHQL_HTTP_URI` / `GRAPHQL_WS_URI` at the deployed API (`wss://` for WS).

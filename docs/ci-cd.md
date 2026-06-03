@@ -18,7 +18,7 @@ This repo separates **continuous integration** (GitHub Actions) from **continuou
 ### CD (your current setup)
 
 - **Vercel** — builds `client/` per `vercel.json` when `main` updates.
-- **Render** — builds and runs `server/` when `main` updates.
+- **Render** — Web Service on `server/` (`npm ci --include=dev && npm run build`, then `npm start`). See `render.yaml`. Production `NODE_ENV` omits devDependencies unless install uses `--include=dev`.
 
 CI does not replace those deploys; it catches broken builds and tests **before** or **alongside** deploy.
 

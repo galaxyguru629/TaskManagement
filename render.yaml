@@ -1,0 +1,15 @@
+# Render Blueprint — Web Service for the GraphQL API (server/)
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: task-dashboard-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0

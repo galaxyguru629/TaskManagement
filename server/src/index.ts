@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, type Server as HttpServer } from 'node:http';
 import cors from 'cors';
 import express from 'express';
 import { useServer } from 'graphql-ws/use/ws';
@@ -11,6 +11,12 @@ import { closePool, pool } from './db/pool.js';
 import { createHttpContext, createWsContext, type GraphQLContext } from './graphql/context.js';
 import { schema } from './resolvers.js';
 import { taskEventStream } from './subscriptions/task-events.js';
+
+/** Lifecycle methods on Node’s HTTP server (declared here for stable typing across tooling). */
+interface NodeHttpListener {
+  close(callback?: (err?: Error) => void): void;
+  listen(port: number, hostname: string, listeningListener?: () => void): void;
+}
 
 const expressCorsOrigin: string | string[] | boolean = env.corsOrigins.length ? env.corsOrigins : true;
 const yogaCorsOrigin: string | string[] | undefined = env.corsOrigins.length ? env.corsOrigins : undefined;
@@ -38,7 +44,7 @@ app.get('/health', (_req, res) => {
 });
 app.use(yoga as unknown as express.RequestHandler);
 
-const httpServer = createServer(app);
+const httpServer: HttpServer = createServer(app);
 const wsServer = new WebSocketServer({
   server: httpServer,
   path: '/graphql',
@@ -61,6 +67,12 @@ const wsCleanup = useServer(
 
 let shuttingDown = false;
 
+function closeHttpServer(server: NodeHttpListener): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((err?: Error) => (err ? reject(err) : resolve()));
+  });
+}
+
 async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) {
     return;
@@ -70,11 +82,9 @@ async function shutdown(signal: string): Promise<void> {
 
   await wsCleanup.dispose();
   await new Promise<void>((resolve, reject) => {
-    wsServer.close((error) => (error ? reject(error) : resolve()));
+    wsServer.close((error?: Error) => (error ? reject(error) : resolve()));
   });
-  await new Promise<void>((resolve, reject) => {
-    httpServer.close((error) => (error ? reject(error) : resolve()));
-  });
+  await closeHttpServer(httpServer as unknown as NodeHttpListener);
   await taskEventStream.stop();
   await closePool();
 }
@@ -89,7 +99,7 @@ process.on('SIGTERM', () => {
 await runMigrations(pool);
 await taskEventStream.start();
 
-httpServer.listen(env.port, env.host, () => {
+(httpServer as unknown as NodeHttpListener).listen(env.port, env.host, () => {
   console.log(`GraphQL API ready at http://${env.host}:${env.port}/graphql`);
   console.log(`WebSocket subscriptions at ws://${env.host}:${env.port}/graphql`);
 });
