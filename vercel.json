@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "npm ci && npm run build",
+  "buildCommand": "npm ci --prefix client && npm run build --prefix client",
   "outputDirectory": "client/dist/client/browser",
-  "installCommand": "npm ci",
+  "installCommand": "npm ci --prefix client",
   "framework": null,
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
