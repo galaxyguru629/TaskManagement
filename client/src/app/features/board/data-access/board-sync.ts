@@ -29,8 +29,9 @@ export function mergeBoardView(current: BoardViewModel, incoming: BoardViewModel
     mergedCards.set(card.id, existing ? mergeCard(card, existing) : card);
   }
 
+  const currentListsById = new Map(current.lists.map((list) => [list.id, list]));
   const lists = incoming.lists.map((list) => {
-    const currentList = current.lists.find((candidate) => candidate.id === list.id);
+    const currentList = currentListsById.get(list.id);
     const incomingIds = new Set(list.cards.map((card) => card.id));
     const tempCards =
       currentList?.cards.filter((card) => card.id.startsWith('temp-') && !incomingIds.has(card.id)) ?? [];
@@ -314,6 +315,16 @@ export function replaceCommentTempId(
   }));
 }
 
+function cardMap(view: BoardViewModel): Map<string, { listId: string; card: BoardCardModel }> {
+  const map = new Map<string, { listId: string; card: BoardCardModel }>();
+  for (const list of view.lists) {
+    for (const card of list.cards) {
+      map.set(card.id, { listId: list.id, card });
+    }
+  }
+  return map;
+}
+
 function findCard(view: BoardViewModel, taskId: string): BoardCardModel | undefined {
   for (const list of view.lists) {
     const card = list.cards.find((candidate) => candidate.id === taskId);
@@ -331,6 +342,9 @@ function patchListsForCard(
     ...view,
     lists: sortLists(
       view.lists.map((list) => {
+        if (list.id !== task.listId && !list.cards.some((c) => c.id === task.id)) {
+          return list;
+        }
         const without = list.cards.filter((card) => card.id !== task.id);
         if (list.id === task.listId) {
           return { ...list, cards: transform(without) };
@@ -344,10 +358,13 @@ function patchListsForCard(
 function patchCard(view: BoardViewModel, taskId: string, transform: (card: BoardCardModel) => BoardCardModel): BoardViewModel {
   return {
     ...view,
-    lists: view.lists.map((list) => ({
-      ...list,
-      cards: list.cards.map((card) => (card.id === taskId ? transform(card) : card)),
-    })),
+    lists: view.lists.map((list) => {
+      const idx = list.cards.findIndex((card) => card.id === taskId);
+      if (idx === -1) return list;
+      const cards = [...list.cards];
+      cards[idx] = transform(cards[idx]);
+      return { ...list, cards };
+    }),
   };
 }
 

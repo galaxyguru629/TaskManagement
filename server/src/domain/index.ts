@@ -1,6 +1,4 @@
-export {
-  recordActivity,
-} from './activity.repository.js';
+export { recordActivity } from './activity.repository.js';
 
 export {
   getBoard, getBoardForUser, getDefaultBoard, getDefaultBoardForUser,
@@ -12,15 +10,15 @@ export {
   getTask, getTaskForUser, createTask, updateTask, moveTask, deleteTask,
   listTasks, listTasksForUser, setTaskLabels,
   createChecklistItem, updateChecklistItem, addComment,
+  type TaskMutationResult, type TaskListResult, type TaskEvent,
 } from './card.repository.js';
 
 export {
   getList, createList, updateList,
+  type ListMutationResult,
 } from './list.repository.js';
 
-export {
-  loadAssigneesForTasks, replaceTaskAssignees, assertAssigneesAreBoardMembers, normalizeAssigneeList,
-} from './task-assignee.repository.js';
+export { loadAssigneesForTasks, replaceTaskAssignees, assertAssigneesAreBoardMembers, normalizeAssigneeList } from './task-assignee.repository.js';
 
 export {
   getUserProfile, updateUserProfile, listBoardMembers, listProjectUsers,
@@ -29,9 +27,4 @@ export {
 } from './user.repository.js';
 
 export { profileActor } from './helpers/mappers.js';
-export { SqlBuilder } from './helpers/sql-builder.js';
-
-export type { TaskEvent } from './card.repository.js';
 export type { BoardEvent } from './board.repository.js';
-export type { TaskMutationResult, TaskListResult } from './card.repository.js';
-export type { ListMutationResult } from './list.repository.js';

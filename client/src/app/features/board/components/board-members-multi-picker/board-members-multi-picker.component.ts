@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BoardMemberModel } from '../../models/board.types';
+import { memberInitials } from '../../utils/board.utils';
 
 @Component({
   selector: 'app-board-members-multi-picker',
@@ -62,15 +63,7 @@ export class BoardMembersMultiPickerComponent {
     event.stopPropagation();
   }
 
-  initials(member: BoardMemberModel): string {
-    const value = member.displayName || member.email || 'U';
-    return value
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? '')
-      .join('');
-  }
+  initials = memberInitials;
 
   label(member: BoardMemberModel): string {
     return member.displayName || member.email || member.auth0Sub;

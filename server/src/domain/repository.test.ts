@@ -183,12 +183,12 @@ test('deleteTask supports successful deletes and version conflicts', async () =>
   const second = await createTask(pool, { title: 'Conflict delete' }, user);
   const updated = await updateTask(pool, second.id, { priority: 5 }, second.version, user);
 
-  const removed = await deleteTask(pool, first.id, first.version);
+  const removed = await deleteTask(pool, first.id, first.version, user);
   assert.equal(removed.conflict, false);
   assert.equal(removed.task?.id, first.id);
   assert.equal(removed.task?.archived, true);
 
-  const conflict = await deleteTask(pool, second.id, second.version);
+  const conflict = await deleteTask(pool, second.id, second.version, user);
   assert.equal(conflict.conflict, true);
   assert.equal(conflict.task?.version, updated.task?.version);
 

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild
 import { FormsModule } from '@angular/forms';
 import { BoardRole } from '../../../../graphql/generated/graphql';
 import { BoardInvitationModel, BoardMemberModel, BoardModel } from '../../models/board.types';
+import { memberInitials } from '../../utils/board.utils';
 
 @Component({
   selector: 'app-board-header',
@@ -27,15 +28,7 @@ export class BoardHeaderComponent {
   inviteMenuOpen = false;
   inviteSearch = '';
 
-  initials(member: BoardMemberModel): string {
-    const value = member.displayName || member.email || 'U';
-    return value
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? '')
-      .join('');
-  }
+  initials = memberInitials;
 
   sendInvite(): void {
     if (!this.inviteEmail.trim()) return;
@@ -76,15 +69,10 @@ export class BoardHeaderComponent {
     return this.inviteContacts().find((contact) => contact.email === this.inviteEmail) ?? null;
   }
 
-  avatarInitials(contact: { email: string; displayName: string | null }): string {
+  avatarInitials: (contact: { email: string; displayName: string | null }) => string = (contact) => {
     const source = contact.displayName?.trim() || contact.email;
-    return source
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((chunk) => chunk[0]?.toUpperCase() ?? '')
-      .join('');
-  }
+    return memberInitials(source ? { displayName: source, email: null } : null);
+  };
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {

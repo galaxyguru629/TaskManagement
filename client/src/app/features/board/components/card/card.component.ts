@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { BoardCardModel, BoardMemberModel } from '../../models/board.types';
+import { memberSingleInitial } from '../../utils/board.utils';
 
 @Component({
   selector: 'app-board-card',
@@ -28,8 +29,5 @@ export class CardComponent {
     return ids.map((id) => lookup.get(id)).filter((member): member is BoardMemberModel => Boolean(member));
   });
 
-  memberInitials(member: BoardMemberModel): string {
-    const value = member.displayName || member.email || 'U';
-    return value.slice(0, 1).toUpperCase();
-  }
+  memberInitials = memberSingleInitial;
 }

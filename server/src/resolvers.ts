@@ -21,6 +21,7 @@ import {
   createList,
   createTask,
   declineInvitation,
+  deleteTask,
   getBoard,
   getBoardForUser,
   getBoardRole,
@@ -48,7 +49,7 @@ import {
   updateUserProfile,
   type BoardEvent,
   type TaskEvent,
-} from './domain/repository.js';
+} from './domain/index.js';
 import {
   BoardEventType,
   BoardRole,
@@ -384,7 +385,7 @@ export function createExecutableTaskSchema(deps: ResolverDeps = defaultDeps) {
         }
         await requireBoardRole(deps.db, boardId, context, [BoardRole.OWNER, BoardRole.ADMIN, BoardRole.MEMBER]);
         const user = profileActor(await requireProfile(deps.db, context));
-        const result = await updateTask(deps.db, id, { archived: true }, expectedVersion, user);
+        const result = await deleteTask(deps.db, id, expectedVersion, user);
         if (result.conflict) {
           return { success: false, conflict: true, task: result.task };
         }

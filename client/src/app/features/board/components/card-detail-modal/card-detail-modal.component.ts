@@ -137,9 +137,10 @@ export class CardDetailModalComponent {
   }
 
   displayActor(actor: string): string {
-    if (!actor || actor.includes('|')) return 'User';
+    if (!actor) return 'User';
     const member = this.boardMembers().find((entry) => entry.auth0Sub === actor);
-    return member?.displayName || member?.email || actor;
+    if (member) return member.displayName || member.email || actor;
+    return actor;
   }
 
   displayActivity(message: string): string {
