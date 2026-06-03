@@ -1,0 +1,78 @@
+# Continuous Integration — validates code on pull requests and pushes to main.
+# Continuous Deployment stays on Vercel (client) and Render (server); they deploy on push to main.
+# Require this workflow to pass under GitHub → Settings → Branches → branch protection rules.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server — build & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+
+  client:
+    name: Client — production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      # No client/.env in CI — generate-environment.mjs uses production placeholders.
+      - run: npm ci
+      - run: npm run build
+
+  graphql-codegen:
+    name: GraphQL — codegen in sync
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+      - run: npm run codegen
+
+      - name: Fail if generated types drift from schema
+        run: |
+          git diff --exit-code src/app/graphql/generated/graphql.ts || (
+            echo "::error::GraphQL generated types are out of date. Run: npm run codegen --prefix client"
+            exit 1
+          )

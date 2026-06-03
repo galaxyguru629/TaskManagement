@@ -186,11 +186,19 @@ vercel   # from repository root; reads vercel.json
 
 Set production env vars in Vercel (see [Environment variables](#environment-variables)). The build runs `prebuild`, which regenerates `environment.config.ts` from those values.
 
+## CI / CD
+
+- **CI** — GitHub Actions on every PR and push to `main`: server tests, client production build, GraphQL codegen drift check. See [docs/ci-cd.md](docs/ci-cd.md).
+- **CD** — Vercel (frontend) and Render (API) deploy automatically when `main` is updated.
+
+Enable branch protection on `main` and require the three CI jobs to pass before merge. Locally: `npm run ci` from the repo root.
+
 ## Scripts reference
 
 | Location | Command | Purpose |
 |----------|---------|---------|
 | root | `npm run dev` | API + Angular dev servers |
+| root | `npm run ci` | Same checks as GitHub Actions (server test + client build) |
 | `server/` | `npm run dev` | API + WebSocket |
 | `server/` | `npm run migrate` | Apply SQL migrations |
 | `server/` | `npm test` | Repository + resolver tests |
