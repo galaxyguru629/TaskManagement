@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "migrate": "tsx src/db/migrate.ts",
     "pretest": "npm run build",
-    "test": "node --test \"dist/**/*.test.js\""
+    "test": "node scripts/run-tests.mjs"
   },
   "dependencies": {
     "@graphql-tools/schema": "^10.0.25",
