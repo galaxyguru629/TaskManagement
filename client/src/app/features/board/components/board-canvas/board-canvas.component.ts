@@ -1,5 +1,5 @@
 import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BoardCardModel, BoardListModel, BoardMemberModel, CardConflict, CardMoveRequest, ListMoveRequest } from '../../models/board.types';
 import { BoardListComponent } from '../board-list/board-list.component';
@@ -25,9 +25,42 @@ export class BoardCanvasComponent {
   readonly openCard = output<BoardCardModel>();
   readonly archiveCard = output<BoardCardModel>();
 
+  readonly canvasEl = viewChild<ElementRef<HTMLElement>>('canvasEl');
+  readonly grabbing = signal(false);
+
+  private dragState: { startX: number; scrollLeft: number } | null = null;
+
   readonly listTitle = signal('');
   readonly addingList = signal(false);
   readonly connectedIds = computed(() => this.lists().map((list) => list.id));
+
+  onPointerDown(event: PointerEvent): void {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('.list, .add-list, button, input, select, textarea, a, [cdkDrag]')) return;
+    const el = this.canvasEl()?.nativeElement;
+    if (!el) return;
+    this.grabbing.set(true);
+    el.setPointerCapture(event.pointerId);
+    this.dragState = { startX: event.clientX, scrollLeft: el.scrollLeft };
+  }
+
+  onPointerMove(event: PointerEvent): void {
+    if (!this.dragState) return;
+    const el = this.canvasEl()?.nativeElement;
+    if (!el) return;
+    event.preventDefault();
+    const dx = event.clientX - this.dragState.startX;
+    el.scrollLeft = this.dragState.scrollLeft - dx;
+  }
+
+  onPointerUp(event: PointerEvent): void {
+    if (!this.dragState) return;
+    const el = this.canvasEl()?.nativeElement;
+    this.grabbing.set(false);
+    if (el) el.releasePointerCapture(event.pointerId);
+    this.dragState = null;
+  }
 
   submitList(): void {
     const title = this.listTitle().trim();

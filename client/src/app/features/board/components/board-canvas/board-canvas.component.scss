@@ -1,14 +1,27 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .canvas {
   flex: 1;
   min-height: 0;
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: auto;
   padding: 16px;
   position: relative;
   z-index: 0;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.canvas.grabbing {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .lists {

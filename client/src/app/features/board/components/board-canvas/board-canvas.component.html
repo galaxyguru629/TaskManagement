@@ -1,4 +1,12 @@
-<div class="canvas u-scrollbar">
+<div
+  class="canvas u-scrollbar"
+  #canvasEl
+  [class.grabbing]="grabbing()"
+  (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointerleave)="onPointerUp($event)"
+>
   @if (loading() && !lists().length) {
     @for (item of [1, 2, 3]; track item) {
       <div class="list-skeleton ui-skeleton"></div>
