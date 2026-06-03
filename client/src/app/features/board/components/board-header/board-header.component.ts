@@ -19,6 +19,8 @@ export class BoardHeaderComponent {
   readonly invitations = input<BoardInvitationModel[]>([]);
   readonly canInvite = input(false);
   readonly loading = input(false);
+  readonly filterActive = input(0);
+  readonly filterToggle = output<void>();
   readonly inviteMember = output<{ email: string; role: BoardRole }>();
   readonly roles = [BoardRole.Member, BoardRole.Admin];
   @ViewChild('inviteMenuRoot') private inviteMenuRoot?: ElementRef<HTMLElement>;

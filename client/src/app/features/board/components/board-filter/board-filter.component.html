@@ -1,0 +1,91 @@
+<header>
+  <h2>Filter</h2>
+  <button type="button" class="close-btn" (click)="closePanel.emit()" aria-label="Close filter panel">×</button>
+</header>
+
+<div class="filter-body">
+  <section class="filter-section">
+    <h3>Search</h3>
+    <input
+      type="text"
+      placeholder="Search cards…"
+      [ngModel]="search()"
+      (ngModelChange)="searchChange.emit($event)"
+    />
+  </section>
+
+  @if (members().length) {
+    <section class="filter-section">
+      <h3>Members</h3>
+      <div class="filter-options">
+        @for (member of members(); track member.auth0Sub) {
+          <label class="filter-checkbox">
+            <input
+              type="checkbox"
+              [checked]="assigneeIds().has(member.auth0Sub)"
+              (change)="assigneeToggle.emit(member.auth0Sub)"
+            />
+            <span class="filter-avatar">{{ (member.displayName ?? member.email ?? '?')[0] }}</span>
+            <span>{{ member.displayName || member.email || member.auth0Sub }}</span>
+          </label>
+        }
+      </div>
+    </section>
+  }
+
+  @if (labels().length) {
+    <section class="filter-section">
+      <h3>Labels</h3>
+      <div class="filter-options">
+        @for (label of labels(); track label.id) {
+          <label class="filter-checkbox">
+            <input
+              type="checkbox"
+              [checked]="labelIds().has(label.id)"
+              (change)="labelToggle.emit(label.id)"
+            />
+            <span class="label-dot" [style.background]="label.color"></span>
+            <span>{{ label.name || 'Label' }}</span>
+          </label>
+        }
+      </div>
+    </section>
+  }
+
+  <section class="filter-section">
+    <h3>Due Date</h3>
+    <div class="filter-options">
+      @for (opt of dueDateOptionsList; track opt.value) {
+        <label class="filter-checkbox">
+          <input
+            type="checkbox"
+            [checked]="dueDateOptions().has(opt.value)"
+            (change)="dueDateToggle.emit(opt.value)"
+          />
+          <span>{{ opt.label }}</span>
+        </label>
+      }
+    </div>
+  </section>
+
+  <section class="filter-section">
+    <h3>Priority</h3>
+    <div class="filter-options">
+      @for (p of [1, 2, 3, 4, 5]; track p) {
+        <label class="filter-checkbox">
+          <input
+            type="checkbox"
+            [checked]="priorities().has(p)"
+            (change)="priorityToggle.emit(p)"
+          />
+          <span class="priority-badge" [class]="'priority--' + p">{{ p }}</span>
+        </label>
+      }
+    </div>
+  </section>
+</div>
+
+<footer>
+  <span class="result-count">{{ resultCount() }} card{{ resultCount() === 1 ? '' : 's' }} match</span>
+  <button type="button" class="clear-btn" (click)="clearFilters.emit()">Clear all filters</button>
+</footer>

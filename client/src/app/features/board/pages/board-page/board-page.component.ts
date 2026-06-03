@@ -3,12 +3,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { BoardFacade } from '../../data-access/board.facade';
 import { BoardHeaderComponent } from '../../components/board-header/board-header.component';
 import { BoardCanvasComponent } from '../../components/board-canvas/board-canvas.component';
+import { BoardFilterComponent } from '../../components/board-filter/board-filter.component';
 import { CardDetailModalComponent } from '../../components/card-detail-modal/card-detail-modal.component';
 
 @Component({
   selector: 'app-board-page',
   standalone: true,
-  imports: [BoardHeaderComponent, BoardCanvasComponent, CardDetailModalComponent],
+  imports: [BoardHeaderComponent, BoardCanvasComponent, BoardFilterComponent, CardDetailModalComponent],
   providers: [BoardFacade],
   templateUrl: './board-page.component.html',
   styleUrl: './board-page.component.scss',

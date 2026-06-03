@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Apollo } from 'apollo-angular';
 import { map, finalize, firstValueFrom } from 'rxjs';
@@ -84,6 +84,36 @@ import {
   mergeBoardView,
 } from './board-sync';
 
+type DueDateOption = 'none' | 'overdue' | 'today' | 'week' | 'month';
+
+interface FilterState {
+  search: string;
+  assigneeIds: string[];
+  labelIds: string[];
+  dueDateOptions: DueDateOption[];
+  priorities: number[];
+}
+
+function matchDueDateOptions(
+  dueDate: string | null | undefined,
+  options: Set<DueDateOption>,
+  today: Date,
+  weekStart: Date,
+  weekEnd: Date,
+  monthStart: Date,
+  monthEnd: Date,
+): boolean {
+  if (options.has('none') && !dueDate) return true;
+  if (!dueDate) return false;
+  const due = new Date(dueDate);
+  if (options.has('overdue') && due < today) return true;
+  if (options.has('today') && due.getFullYear() === today.getFullYear() && due.getMonth() === today.getMonth() && due.getDate() === today.getDate())
+    return true;
+  if (options.has('week') && due >= weekStart && due <= weekEnd) return true;
+  if (options.has('month') && due >= monthStart && due <= monthEnd) return true;
+  return false;
+}
+
 type CardUpdateInput = Partial<Pick<BoardCardModel, 'title' | 'description' | 'priority' | 'assignees' | 'dueDate' | 'coverColor'>>;
 
 function assigneesEqual(left: string[], right: string[]): boolean {
@@ -112,8 +142,82 @@ export class BoardFacade {
   readonly checklistPending = signal(false);
   readonly commentPending = signal(false);
 
+  // Filter state
+  readonly filterOpen = signal(false);
+  readonly filterSearch = signal('');
+  readonly filterAssigneeIds = signal<Set<string>>(new Set());
+  readonly filterLabelIds = signal<Set<string>>(new Set());
+  readonly filterDueDateOptions = signal<Set<DueDateOption>>(new Set());
+  readonly filterPriorities = signal<Set<number>>(new Set());
+
   readonly board = computed(() => this.view()?.board ?? null);
   readonly lists = computed(() => this.view()?.lists ?? []);
+
+  readonly filterActiveCount = computed(() => {
+    let n = 0;
+    if (this.filterSearch()) n++;
+    n += this.filterAssigneeIds().size;
+    n += this.filterLabelIds().size;
+    n += this.filterDueDateOptions().size;
+    n += this.filterPriorities().size;
+    return n;
+  });
+
+  readonly filteredCardCount = computed(() =>
+    this.filteredLists().reduce((sum, list) => sum + list.cards.length, 0),
+  );
+
+  readonly filteredLists = computed(() => {
+    const lists = this.lists();
+    const search = this.filterSearch().toLowerCase().trim();
+    const assigneeIds = this.filterAssigneeIds();
+    const labelIds = this.filterLabelIds();
+    const dueDateOptions = this.filterDueDateOptions();
+    const priorities = this.filterPriorities();
+
+    if (!search && !assigneeIds.size && !labelIds.size && !dueDateOptions.size && !priorities.size) {
+      return lists;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    return lists.map((list) => ({
+      ...list,
+      cards: list.cards.filter((card) => {
+        if (search && !card.title.toLowerCase().includes(search) && !(card.description ?? '').toLowerCase().includes(search))
+          return false;
+        if (assigneeIds.size && !card.assignees.some((a) => assigneeIds.has(a)))
+          return false;
+        if (labelIds.size && !card.labels.some((l) => labelIds.has(l.id)))
+          return false;
+        if (dueDateOptions.size && !matchDueDateOptions(card.dueDate, dueDateOptions, today, weekStart, weekEnd, monthStart, monthEnd))
+          return false;
+        if (priorities.size && !priorities.has(card.priority))
+          return false;
+        return true;
+      }),
+    }));
+  });
+
+  private readonly persistFilters = effect(() => {
+    const boardId = this.boardId();
+    if (!boardId) return;
+    const state: FilterState = {
+      search: this.filterSearch(),
+      assigneeIds: [...this.filterAssigneeIds()],
+      labelIds: [...this.filterLabelIds()],
+      dueDateOptions: [...this.filterDueDateOptions()],
+      priorities: [...this.filterPriorities()],
+    };
+    localStorage.setItem(`taskboard_filter_${boardId}`, JSON.stringify(state));
+  });
   readonly selectedCard = computed(() => {
     const id = this.selectedCardId();
     if (!id) return null;
@@ -183,10 +287,26 @@ export class BoardFacade {
       this.subscriptionStartedFor = null;
     }
     this.boardId.set(boardId);
+    this.loadFilterState(boardId);
     this.loadBoard(boardId);
     this.loadMembers(boardId);
     this.loadProjectUsers(boardId);
     this.startSubscription(boardId);
+  }
+
+  private loadFilterState(boardId: string): void {
+    try {
+      const raw = localStorage.getItem(`taskboard_filter_${boardId}`);
+      if (!raw) return;
+      const state: FilterState = JSON.parse(raw);
+      this.filterSearch.set(state.search ?? '');
+      this.filterAssigneeIds.set(new Set(state.assigneeIds ?? []));
+      this.filterLabelIds.set(new Set(state.labelIds ?? []));
+      this.filterDueDateOptions.set(new Set(state.dueDateOptions ?? []));
+      this.filterPriorities.set(new Set(state.priorities ?? []));
+    } catch {
+      /* ignore corrupt state */
+    }
   }
 
   createBoard(title: string, description?: string | null, logoImageData?: string | null): Promise<string | null> {
@@ -578,6 +698,58 @@ export class BoardFacade {
 
   selectCard(id: string | null): void {
     this.selectedCardId.set(id);
+  }
+
+  toggleFilterPanel(): void {
+    this.filterOpen.update((v) => !v);
+  }
+
+  setFilterSearch(value: string): void {
+    this.filterSearch.set(value);
+  }
+
+  toggleFilterAssignee(id: string): void {
+    this.filterAssigneeIds.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  toggleFilterLabel(id: string): void {
+    this.filterLabelIds.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  toggleFilterDueDate(option: DueDateOption): void {
+    this.filterDueDateOptions.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(option)) next.delete(option);
+      else next.add(option);
+      return next;
+    });
+  }
+
+  toggleFilterPriority(priority: number): void {
+    this.filterPriorities.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(priority)) next.delete(priority);
+      else next.add(priority);
+      return next;
+    });
+  }
+
+  clearFilters(): void {
+    this.filterSearch.set('');
+    this.filterAssigneeIds.set(new Set());
+    this.filterLabelIds.set(new Set());
+    this.filterDueDateOptions.set(new Set());
+    this.filterPriorities.set(new Set());
   }
 
   dismissConflict(taskId: string): void {

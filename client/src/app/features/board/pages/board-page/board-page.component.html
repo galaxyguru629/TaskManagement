@@ -6,11 +6,13 @@
     [inviteContacts]="facade.inviteContacts()"
     [invitations]="facade.invitations()"
     [canInvite]="facade.canInvite()"
+    [filterActive]="facade.filterActiveCount()"
+    (filterToggle)="facade.toggleFilterPanel()"
     (inviteMember)="facade.inviteMember($event.email, $event.role)"
   />
 
   <app-board-canvas
-    [lists]="facade.lists()"
+    [lists]="facade.filteredLists()"
     [members]="facade.members()"
     [loading]="facade.loading()"
     [conflicts]="facade.conflicts()"
@@ -41,3 +43,26 @@
     (dismissConflict)="facade.dismissConflict($event)"
   />
 </section>
+
+@if (facade.filterOpen()) {
+  <div class="filter-overlay" (click)="facade.toggleFilterPanel()"></div>
+  <aside class="filter-panel-slide">
+    <app-board-filter
+      [search]="facade.filterSearch()"
+      [assigneeIds]="facade.filterAssigneeIds()"
+      [labelIds]="facade.filterLabelIds()"
+      [dueDateOptions]="facade.filterDueDateOptions()"
+      [priorities]="facade.filterPriorities()"
+      [members]="facade.members()"
+      [labels]="facade.view()?.labels ?? []"
+      [resultCount]="facade.filteredCardCount()"
+      (searchChange)="facade.setFilterSearch($event)"
+      (assigneeToggle)="facade.toggleFilterAssignee($event)"
+      (labelToggle)="facade.toggleFilterLabel($event)"
+      (dueDateToggle)="facade.toggleFilterDueDate($event)"
+      (priorityToggle)="facade.toggleFilterPriority($event)"
+      (clearFilters)="facade.clearFilters()"
+      (closePanel)="facade.toggleFilterPanel()"
+    />
+  </aside>
+}

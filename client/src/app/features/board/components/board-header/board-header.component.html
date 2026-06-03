@@ -26,7 +26,12 @@
     </div>
   </div>
   <div class="board-actions">
-    <span class="live-pill">Live</span>
+    <button type="button" class="header-button filter-trigger" (click)="filterToggle.emit()">
+      Filter
+      @if (filterActive()) {
+        <span class="filter-badge">{{ filterActive() }}</span>
+      }
+    </button>
     @if (canInvite()) {
       <form class="invite-form" (ngSubmit)="sendInvite()">
         <div class="invite-picker" #inviteMenuRoot (click)="keepInviteMenuOpen($event)">
